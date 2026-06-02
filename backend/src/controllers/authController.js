@@ -170,10 +170,85 @@ const refreshToken = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Demo Login (No credentials required)
+ * @route   POST /api/auth/demo
+ * @access  Public
+ */
+const demoLogin = async (req, res) => {
+  const { role } = req.body;
+
+  if (!['Citizen', 'Department Officer', 'Admin'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Invalid role specified for demo login' });
+  }
+
+  let email, fullName;
+  if (role === 'Admin') {
+    email = 'demo.admin@civicresolve.gov';
+    fullName = 'Demo Administrator';
+  } else if (role === 'Department Officer') {
+    email = 'demo.officer@civicresolve.gov';
+    fullName = 'Demo Officer';
+  } else {
+    email = 'demo.citizen@civicresolve.gov';
+    fullName = 'Demo Citizen';
+  }
+
+  try {
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      let departmentId = null;
+      if (role === 'Department Officer') {
+        const Department = require('../models/Department');
+        const dept = await Department.findOne({ status: 'Active' });
+        if (dept) {
+          departmentId = dept._id;
+        } else {
+          const fallbackDept = await Department.findOne({});
+          if (fallbackDept) {
+            departmentId = fallbackDept._id;
+          }
+        }
+      }
+
+      user = await User.create({
+        fullName,
+        email,
+        mobile: '555-0199',
+        passwordHash: 'demopassword',
+        role,
+        department: departmentId,
+        points: role === 'Citizen' ? 120 : 0,
+        level: role === 'Citizen' ? 2 : 1,
+        status: 'Active',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        points: user.points,
+        level: user.level,
+        profilePhoto: user.profilePhoto,
+        token: generateToken(user),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   registerCitizen,
   loginUser,
   getUserProfile,
   logoutUser,
   refreshToken,
+  demoLogin,
 };

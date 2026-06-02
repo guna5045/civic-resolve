@@ -7,7 +7,18 @@ const Department = require('../models/Department');
  */
 const getDepartments = async (req, res) => {
   try {
-    const departments = await Department.find({});
+    let departments = await Department.find({});
+    if (departments.length === 0) {
+      const defaultDepts = [
+        { name: 'Roads Department', departmentHead: 'John Doe', description: 'Handles municipal roads and infrastructure.' },
+        { name: 'Water Supply Department', departmentHead: 'Jane Smith', description: 'Handles drinking water and sewage systems.' },
+        { name: 'Electricity Department', departmentHead: 'Robert Johnson', description: 'Handles streetlights and power distribution.' },
+        { name: 'Sanitation Department', departmentHead: 'Emily Davis', description: 'Handles garbage collection and waste management.' },
+        { name: 'Public Safety Department', departmentHead: 'Michael Brown', description: 'Handles emergency services and public hazard mitigation.' },
+        { name: 'Other Department', departmentHead: 'Sarah Wilson', description: 'Handles miscellaneous municipal complaints.' },
+      ];
+      departments = await Department.insertMany(defaultDepts);
+    }
     res.json({ success: true, count: departments.length, data: departments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

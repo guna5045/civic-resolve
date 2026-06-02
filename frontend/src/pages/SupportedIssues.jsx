@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ComplaintCard from '../components/common/ComplaintCard';
+import EmptyState from '../components/common/EmptyState';
+import { Heart } from 'lucide-react';
+import { LanguageContext } from '../context/LanguageContext';
 
 const SupportedIssues = () => {
+  const { t } = useContext(LanguageContext);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,8 +47,8 @@ const SupportedIssues = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-100">Supported Issues</h2>
-        <p className="text-xs text-slate-400">Issues reported by other citizens that you have supported to boost priority.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-100">{t('supported.title')}</h2>
+        <p className="text-xs text-slate-400">{t('supported.subtitle')}</p>
       </div>
 
       {loading ? (
@@ -50,9 +56,14 @@ const SupportedIssues = () => {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
         </div>
       ) : complaints.length === 0 ? (
-        <div className="glass-panel rounded-xl border border-slate-800 py-16 text-center text-sm text-slate-500">
-          You haven't supported any complaints yet. Check "Nearby Issues" to discover public complaints.
-        </div>
+        <EmptyState
+          title={t('supported.emptyState')}
+          description={t('supported.emptyStateDesc')}
+          icon={Heart}
+          showAction={true}
+          actionText={t('nav.nearbyIssues')}
+          onActionClick={() => navigate('/citizen/nearby')}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {complaints.map((c) => (

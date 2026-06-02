@@ -64,6 +64,10 @@ const complaintSchema = new mongoose.Schema(
       enum: ['Low', 'Medium', 'High', 'Critical'],
       default: 'Medium',
     },
+    originalPriority: {
+      type: String,
+      enum: ['Low', 'Medium', 'High', 'Critical'],
+    },
     images: [
       {
         type: String,

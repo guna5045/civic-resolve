@@ -64,7 +64,7 @@ const OfficerReports = () => {
             </div>
             <h4 className="text-base font-bold text-slate-350">Individual Complaint Briefs</h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              To download individual PDF reports containing timelines, coordinate logs, and AI summaries, inspect any complaint card on the "Assigned Issues" board and select the PDF icon.
+              To download individual PDF reports containing timelines, coordinate logs, and AI-assisted summaries, inspect any complaint card on the "Assigned Issues" board and select the PDF icon.
             </p>
           </div>
         </div>

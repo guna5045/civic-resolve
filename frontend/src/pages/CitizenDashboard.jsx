@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { AlertCircle, CheckCircle, RefreshCw, Trophy, Bell, Heart, PlusCircle, MapPin, Award } from 'lucide-react';
 import StatsCard from '../components/common/StatsCard';
 import ComplaintCard from '../components/common/ComplaintCard';
 import Button from '../components/common/Button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import EmptyState from '../components/common/EmptyState';
+import { LanguageContext } from '../context/LanguageContext';
 
 const getLevelName = (points) => {
   if (points >= 1000) return 'Civic Champion';
@@ -16,7 +18,9 @@ const getLevelName = (points) => {
 };
 
 const CitizenDashboard = () => {
+  const { t } = useContext(LanguageContext);
   const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [supportedCount, setSupportedCount] = useState(0);
   const [activityFeed, setActivityFeed] = useState([]);
@@ -150,16 +154,16 @@ const CitizenDashboard = () => {
             {user?.fullName?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-100">Welcome Back, {user?.fullName}!</h2>
+            <h2 className="text-xl font-bold text-slate-100">{t('dashboard.welcome')}, {user?.fullName}!</h2>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs text-brand-400 font-semibold uppercase tracking-wider bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
                 {levelTier} (Level {user?.level || 1})
               </span>
               <span className="text-xs text-slate-500">
-                Points: <strong className="text-slate-300">{currentXP} XP</strong>
+                {t('dashboard.points')}: <strong className="text-slate-300">{currentXP} XP</strong>
               </span>
               <span className="text-xs text-slate-500">
-                Badges: <strong className="text-slate-300">{user?.earnedBadges?.length || 0}</strong>
+                {t('dashboard.badges')}: <strong className="text-slate-300">{user?.earnedBadges?.length || 0}</strong>
               </span>
             </div>
           </div>
@@ -168,7 +172,7 @@ const CitizenDashboard = () => {
         {/* XP Progress Slider */}
         <div className="w-full lg:max-w-xs space-y-1.5">
           <div className="flex justify-between text-[11px] font-semibold text-slate-400">
-            <span>Reputation Rank</span>
+            <span>{t('dashboard.reputationRank')}</span>
             <span>{currentXP} / {nextLevelXP} XP</span>
           </div>
           <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
@@ -183,25 +187,25 @@ const CitizenDashboard = () => {
       {/* 2. Statistics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
-          title="Complaints Raised"
+          title={t('dashboard.complaintsRaised')}
           value={stats.raised}
           icon={AlertCircle}
           colorClass="text-brand-400 bg-brand-500/10 border-brand-500/20"
         />
         <StatsCard
-          title="Issues Supported"
+          title={t('dashboard.issuesSupported')}
           value={stats.supported}
           icon={Heart}
           colorClass="text-rose-400 bg-rose-500/10 border-rose-500/20"
         />
         <StatsCard
-          title="Resolved"
+          title={t('dashboard.resolved')}
           value={stats.resolved}
           icon={CheckCircle}
           colorClass="text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
         />
         <StatsCard
-          title="Pending Queue"
+          title={t('dashboard.pendingQueue')}
           value={stats.pending}
           icon={RefreshCw}
           colorClass="text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
@@ -214,9 +218,9 @@ const CitizenDashboard = () => {
         {/* Left Side: Recent Reports list */}
         <div className="lg:col-span-8 space-y-6">
           <div className="flex justify-between items-center">
-            <h4 className="text-base font-bold text-slate-200">My Complaint Reports</h4>
+            <h4 className="text-base font-bold text-slate-200">{t('dashboard.myReports')}</h4>
             <Link to="/citizen/my-complaints" className="text-xs text-brand-400 font-semibold hover:underline">
-              View All &rarr;
+              {t('dashboard.viewAll')} &rarr;
             </Link>
           </div>
 
@@ -225,9 +229,14 @@ const CitizenDashboard = () => {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
             </div>
           ) : complaints.length === 0 ? (
-            <div className="glass-panel rounded-2xl border border-slate-800 py-16 text-center text-sm text-slate-500">
-              No registered issues found. Report an issue to help improve the neighborhood!
-            </div>
+            <EmptyState
+              title={t('dashboard.noIssues')}
+              description={t('dashboard.noIssuesDesc')}
+              icon={AlertCircle}
+              showAction={true}
+              actionText={t('nav.reportIssue')}
+              onActionClick={() => navigate('/citizen/report')}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {complaints.map((c) => (
@@ -238,24 +247,47 @@ const CitizenDashboard = () => {
 
           {/* Quick Actions Panel */}
           <div className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block border-b border-slate-805 pb-2">
-              Citizen Quick Actions
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block border-b border-slate-800/60 pb-2">
+              {t('dashboard.quickActions')}
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Link to="/citizen/report">
-                <Button variant="primary" className="w-full flex items-center justify-center gap-1.5 text-xs py-3">
-                  <PlusCircle className="h-4.5 w-4.5" /> Report Public Issue
-                </Button>
+              <Link to="/citizen/report" className="group flex flex-col justify-between p-4 rounded-xl border border-slate-800/80 bg-slate-900/20 hover:bg-slate-900/40 hover:border-brand-500/30 transition-all duration-300 cursor-pointer">
+                <div>
+                  <div className="p-2 rounded-lg bg-brand-500/10 text-brand-400 w-fit group-hover:bg-brand-500/20 transition-colors duration-300">
+                    <PlusCircle className="h-5 w-5" />
+                  </div>
+                  <h5 className="text-xs font-bold text-slate-200 mt-3 group-hover:text-brand-400 transition-colors duration-300">{t('nav.reportIssue')}</h5>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{t('dashboard.reportDesc')}</p>
+                </div>
+                <span className="text-[10px] text-brand-400 font-semibold mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
+                  {t('dashboard.fileReport')} &rarr;
+                </span>
               </Link>
-              <Link to="/citizen/nearby">
-                <Button variant="secondary" className="w-full flex items-center justify-center gap-1.5 text-xs py-3">
-                  <MapPin className="h-4.5 w-4.5" /> View Nearby Issues
-                </Button>
+              
+              <Link to="/citizen/nearby" className="group flex flex-col justify-between p-4 rounded-xl border border-slate-800/80 bg-slate-900/20 hover:bg-slate-900/40 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer">
+                <div>
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 w-fit group-hover:bg-emerald-500/20 transition-colors duration-300">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  <h5 className="text-xs font-bold text-slate-200 mt-3 group-hover:text-emerald-400 transition-colors duration-300">{t('nav.nearbyIssues')}</h5>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{t('dashboard.nearbyDesc')}</p>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-semibold mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
+                  {t('dashboard.exploreMap')} &rarr;
+                </span>
               </Link>
-              <Link to="/citizen/rewards">
-                <Button variant="glass" className="w-full flex items-center justify-center gap-1.5 text-xs py-3">
-                  <Award className="h-4.5 w-4.5" /> View My Rewards
-                </Button>
+              
+              <Link to="/citizen/rewards" className="group flex flex-col justify-between p-4 rounded-xl border border-slate-800/80 bg-slate-900/20 hover:bg-slate-900/40 hover:border-amber-500/30 transition-all duration-300 cursor-pointer">
+                <div>
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 w-fit group-hover:bg-amber-500/20 transition-colors duration-300">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <h5 className="text-xs font-bold text-slate-200 mt-3 group-hover:text-amber-400 transition-colors duration-300">{t('nav.rewards')}</h5>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{t('dashboard.rewardsDesc')}</p>
+                </div>
+                <span className="text-[10px] text-amber-400 font-semibold mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
+                  {t('dashboard.claimBadges')} &rarr;
+                </span>
               </Link>
             </div>
           </div>
@@ -264,7 +296,7 @@ const CitizenDashboard = () => {
         {/* Right Side: Activity Feed */}
         <div className="lg:col-span-4 glass-panel rounded-2xl border border-slate-805 p-6 space-y-5">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block border-b border-slate-805 pb-2">
-            My Activity History
+            {t('dashboard.activityHistory')}
           </span>
 
           {loading ? (
@@ -272,7 +304,12 @@ const CitizenDashboard = () => {
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
             </div>
           ) : activityFeed.length === 0 ? (
-            <p className="text-xs text-slate-500 text-center py-4">No recent activity logged.</p>
+            <EmptyState
+              title={t('dashboard.noActivity')}
+              description={t('dashboard.noActivity')}
+              icon={RefreshCw}
+              className="py-6 border-none bg-transparent"
+            />
           ) : (
             <div className="space-y-4">
               {activityFeed.map((act, index) => (

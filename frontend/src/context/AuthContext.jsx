@@ -75,6 +75,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const demoLogin = async (role) => {
+    setError(null);
+    try {
+      const res = await api.post('/auth/demo', { role });
+      if (res.data.success) {
+        const { token, ...userData } = res.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        // Refresh full profile data
+        const profileRes = await api.get('/auth/profile');
+        if (profileRes.data.success) {
+          setUser(profileRes.data.data);
+          localStorage.setItem('user', JSON.stringify(profileRes.data.data));
+        }
+        return profileRes.data.data;
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Demo login failed.';
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -94,7 +118,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout, refreshUser, demoLogin }}>
       {children}
     </AuthContext.Provider>
   );

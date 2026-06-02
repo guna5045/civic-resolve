@@ -35,8 +35,15 @@ const createComplaint = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Department not found' });
     }
 
-    // Capture uploaded files from multer
-    const images = req.files ? req.files.map((file) => file.path || `/uploads/${file.filename}`) : [];
+    // Capture uploaded files from multer dynamically resolving local vs Cloudinary urls
+    const images = req.files
+      ? req.files.map((file) => {
+          if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+            return file.path;
+          }
+          return `/uploads/${file.filename}`;
+        })
+      : [];
 
     const complaint = await Complaint.create({
       complaintId,
@@ -47,6 +54,7 @@ const createComplaint = async (req, res) => {
       aiSummary: aiAnalysis.summary,
       category: aiAnalysis.category,
       priority: aiAnalysis.priority,
+      originalPriority: aiAnalysis.priority,
       images,
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
@@ -237,7 +245,14 @@ const getNearbyComplaints = async (req, res) => {
  */
 const updateComplaintStatus = async (req, res) => {
   const { status, notes } = req.body;
-  const resolutionImages = req.files ? req.files.map((file) => file.path || `/uploads/${file.filename}`) : [];
+  const resolutionImages = req.files
+    ? req.files.map((file) => {
+        if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+          return file.path;
+        }
+        return `/uploads/${file.filename}`;
+      })
+    : [];
 
   try {
     const complaint = await Complaint.findById(req.params.id);
@@ -302,10 +317,95 @@ const updateComplaintStatus = async (req, res) => {
   }
 };
 
+const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // metres
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // in metres
+};
+
+/**
+ * @desc    Check for duplicate complaints within radius
+ * @route   POST /api/complaints/check-duplicates
+ * @access  Private (Citizen only)
+ */
+const checkDuplicates = async (req, res) => {
+  const { latitude, longitude, category, title } = req.body;
+  if (!latitude || !longitude || !category) {
+    return res.status(400).json({ success: false, message: 'Latitude, Longitude and Category are required' });
+  }
+
+  try {
+    const radius = 0.1; // 100 meters
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    // Bounding box for 100m
+    const latDelta = radius / 111;
+    const lngDelta = radius / (111 * Math.cos((lat * Math.PI) / 180));
+
+    const minLat = lat - latDelta;
+    const maxLat = lat + latDelta;
+    const minLng = lng - lngDelta;
+    const maxLng = lng + lngDelta;
+
+    // Find active complaints nearby in the same category
+    const activeStatuses = ['Submitted', 'Under Review', 'Assigned', 'In Progress'];
+    const candidates = await Complaint.find({
+      latitude: { $gte: minLat, $lte: maxLat },
+      longitude: { $gte: minLng, $lte: maxLng },
+      category: category,
+      status: { $in: activeStatuses }
+    });
+
+    // Perform keyword comparison (compare title words of length > 2)
+    const searchWords = title.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const duplicates = candidates.filter(candidate => {
+      const candidateTitleLower = candidate.title.toLowerCase();
+      const titleLower = title.toLowerCase();
+      
+      // Substring match
+      if (candidateTitleLower.includes(titleLower) || titleLower.includes(candidateTitleLower)) {
+        return true;
+      }
+      
+      // Keyword overlap
+      const overlapCount = searchWords.filter(word => candidateTitleLower.includes(word)).length;
+      return overlapCount > 0;
+    });
+
+    res.json({
+      success: true,
+      hasDuplicates: duplicates.length > 0,
+      duplicates: duplicates.map(d => ({
+        _id: d._id,
+        title: d.title,
+        status: d.status,
+        supportCount: d.supportCount,
+        priority: d.priority,
+        latitude: d.latitude,
+        longitude: d.longitude,
+        distance: Math.round(getDistanceMeters(lat, lng, d.latitude, d.longitude))
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
   getComplaintById,
   getNearbyComplaints,
   updateComplaintStatus,
+  checkDuplicates,
 };

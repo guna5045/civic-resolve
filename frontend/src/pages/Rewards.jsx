@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import BadgeCard from '../components/common/BadgeCard';
 import Button from '../components/common/Button';
-import { Award, CheckCircle, RefreshCw, Trophy, Star } from 'lucide-react';
+import { Award, CheckCircle, RefreshCw, Trophy, Star, Lock } from 'lucide-react';
 import { getBadgeIcon } from '../utils/formatters';
+import { LanguageContext } from '../context/LanguageContext';
 
 const getLevelName = (points) => {
   if (points >= 1000) return 'Civic Champion';
@@ -15,6 +16,7 @@ const getLevelName = (points) => {
 };
 
 const Rewards = () => {
+  const { t } = useContext(LanguageContext);
   const { user, refreshUser } = useAuth();
   const [allBadges, setAllBadges] = useState([]);
   const [unlockedBadgesMap, setUnlockedBadgesMap] = useState({});
@@ -183,8 +185,8 @@ const Rewards = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-100">Citizen Rewards & Badges</h2>
-          <p className="text-xs text-slate-400">Unlock digital achievements, earn XP multipliers, and track your gamification parameters.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-100">{t('rewards.title')}</h2>
+          <p className="text-xs text-slate-400">{t('rewards.subtitle')}</p>
         </div>
         <Button
           variant="primary"
@@ -192,7 +194,7 @@ const Rewards = () => {
           loading={evaluating}
           className="flex items-center gap-1.5"
         >
-          <Award className="h-4 w-4" /> Evaluate Unlocks
+          <Award className="h-4 w-4" /> {t('rewards.evaluate')}
         </Button>
       </div>
 
@@ -210,18 +212,18 @@ const Rewards = () => {
               <Star className="h-5.5 w-5.5 fill-amber-500" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block font-mono">Reputation Balance</span>
+              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block font-mono">{t('rewards.reputationBalance')}</span>
               <span className="text-3xl font-extrabold text-slate-100 tracking-tight">{currentXP} XP</span>
             </div>
           </div>
 
           <div className="border-t border-slate-800/40 pt-5 mt-6 space-y-3.5 text-xs text-slate-400 font-mono">
             <div className="flex justify-between">
-              <span>Intake points:</span>
+              <span>{t('rewards.intakePoints')}:</span>
               <span>{(stats.complaintsCount * 20) + (stats.supportsCount * 5)} XP</span>
             </div>
             <div className="flex justify-between">
-              <span>Badge Bonuses:</span>
+              <span>{t('rewards.badgeBonuses')}:</span>
               <span>{user?.earnedBadges?.reduce((sum, eb) => sum + (eb.badge?.pointsReward || 0), 0) || 0} XP</span>
             </div>
           </div>
@@ -231,19 +233,19 @@ const Rewards = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <div>
-                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Reputation rank tier</span>
+                <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">{t('rewards.reputationRankTier')}</span>
                 <h3 className="text-lg font-bold text-slate-200">{levelTier} (Level {user?.level || 1})</h3>
               </div>
               <Trophy className="h-6 w-6 text-brand-400" />
             </div>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              Strengthen community services! Reports earn 20 XP (+50 bonus on 1st), supporting upvotes earn 5 XP, and resolutions earn 30 XP!
+              {t('rewards.multiplierDesc')}
             </p>
           </div>
 
           <div className="space-y-1.5 mt-5">
             <div className="flex justify-between text-[10px] text-slate-500 font-semibold uppercase">
-              <span>Progress to next rank</span>
+              <span>{t('rewards.nextRankProgress')}</span>
               <span>{currentXP} / {nextLevelXP} XP</span>
             </div>
             <div className="h-2 w-full bg-slate-950 rounded-full border border-slate-850 overflow-hidden">
@@ -258,7 +260,7 @@ const Rewards = () => {
 
       {/* Badges and Unlocks Progress */}
       <div className="space-y-4">
-        <h4 className="text-base font-bold text-slate-200">Reputation Badges Directory</h4>
+        <h4 className="text-base font-bold text-slate-200">{t('rewards.directory')}</h4>
 
         {loading ? (
           <div className="py-12 flex justify-center">
@@ -273,45 +275,57 @@ const Rewards = () => {
               return (
                 <div
                   key={badge._id}
-                  className={`glass-panel rounded-xl border p-5 flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
-                    isUnlocked ? 'border-brand-500/30 bg-brand-500/5 shadow-md shadow-brand-500/5' : 'border-slate-800/80 bg-slate-900/10'
+                  className={`group glass-panel rounded-xl border p-5 flex flex-col justify-between transition-all duration-305 relative overflow-hidden hover:scale-[1.02] ${
+                    isUnlocked
+                      ? 'border-brand-500/30 bg-brand-500/5 shadow-md shadow-brand-500/5 hover:border-brand-500/50'
+                      : 'border-slate-800/80 bg-slate-900/5 hover:border-slate-700/80 opacity-80 hover:opacity-100'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-4xl">{isUnlocked ? getBadgeIcon(badge.icon) : '🔒'}</div>
+                      <div className="relative h-12 w-12 flex items-center justify-center rounded-xl bg-slate-950/80 border border-slate-800/60 shadow-inner">
+                        <div className={`text-2xl ${isUnlocked ? 'animate-pulse' : 'opacity-25 filter grayscale'}`}>
+                          {getBadgeIcon(badge.icon)}
+                        </div>
+                        {!isUnlocked && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Lock className="h-4 w-4 text-slate-500 group-hover:text-slate-455 transition-colors duration-200" />
+                          </div>
+                        )}
+                      </div>
+                      
                       <span
-                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                        className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                           isUnlocked
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-slate-800/80 text-slate-500 border-slate-800'
                         }`}
                       >
-                        {isUnlocked ? 'Unlocked' : 'Locked'}
+                        {isUnlocked ? t('rewards.unlocked') : t('rewards.locked')}
                       </span>
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-200">{badge.name}</h4>
+                    <h4 className="text-sm font-bold text-slate-250 group-hover:text-slate-100 transition-colors duration-200">{t(`badgeNames.${badge.name}`) || badge.name}</h4>
                     <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{badge.description}</p>
                   </div>
 
                   {/* Progress block for locked badges */}
-                  <div className="mt-4 border-t border-slate-800/60 pt-3.5 space-y-2">
+                  <div className="mt-4 border-t border-slate-800/50 pt-3.5 space-y-2">
                     <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold uppercase">
-                      <span>Requirement: {badge.requirement}</span>
-                      {!isUnlocked && <span>{progress.percent}%</span>}
+                      <span className="truncate max-w-[200px]">{t('rewards.requirement')}: {badge.requirement}</span>
+                      {!isUnlocked && <span className="text-brand-400">{progress.percent}%</span>}
                     </div>
 
                     {!isUnlocked ? (
                       <div className="h-1.5 w-full bg-slate-950 rounded-full border border-slate-850 overflow-hidden">
                         <div
-                          className="h-full bg-brand-500/50 rounded-full"
+                          className="h-full bg-gradient-to-r from-brand-500/60 to-violet-500/60 rounded-full transition-all duration-300"
                           style={{ width: `${progress.percent}%` }}
                         />
                       </div>
                     ) : (
                       <span className="text-[10px] text-slate-500 block font-medium">
-                        Unlocked on: {new Date(unlockedBadgesMap[badge._id]).toLocaleDateString()}
+                        {t('rewards.unlockedOn')}: {new Date(unlockedBadgesMap[badge._id]).toLocaleDateString()}
                       </span>
                     )}
                   </div>

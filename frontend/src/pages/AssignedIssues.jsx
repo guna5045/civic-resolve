@@ -189,7 +189,7 @@ const AssignedIssues = () => {
               {selectedComplaint.aiSummary && (
                 <div className="space-y-1.5 bg-brand-500/5 p-4 rounded-xl border border-brand-500/20">
                   <div className="flex items-center gap-1.5 text-brand-400 text-xs font-bold uppercase tracking-wider">
-                    <Sparkles className="h-4.5 w-4.5" /> Gemini AI Brief
+                    <Sparkles className="h-4.5 w-4.5" /> AI-Assisted Brief
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed italic mt-1">{selectedComplaint.aiSummary}</p>
                 </div>

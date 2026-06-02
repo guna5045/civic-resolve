@@ -6,6 +6,7 @@ const {
   getComplaintById,
   getNearbyComplaints,
   updateComplaintStatus,
+  checkDuplicates,
 } = require('../controllers/complaintController');
 const { supportComplaint, checkSupport } = require('../controllers/supportController');
 const { protect } = require('../middleware/authMiddleware');
@@ -38,6 +39,7 @@ router.get('/supported-complaints', protect, async (req, res, next) => {
 router.get('/:id', protect, getComplaintById);
 
 // Citizen actions
+router.post('/check-duplicates', protect, authorize('Citizen'), checkDuplicates);
 router.post('/', protect, authorize('Citizen'), upload.array('images', 5), createComplaint);
 router.post('/create', protect, authorize('Citizen'), upload.array('images', 5), createComplaint);
 router.post('/:id/support', protect, authorize('Citizen'), supportComplaint);

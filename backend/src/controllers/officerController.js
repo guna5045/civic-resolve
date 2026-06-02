@@ -124,7 +124,14 @@ const updateIssueStatus = async (req, res) => {
  */
 const uploadResolution = async (req, res) => {
   const { complaintId, notes } = req.body;
-  const resolutionImages = req.files ? req.files.map((file) => file.path || `/uploads/${file.filename}`) : [];
+  const resolutionImages = req.files
+    ? req.files.map((file) => {
+        if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+          return file.path;
+        }
+        return `/uploads/${file.filename}`;
+      })
+    : [];
 
   try {
     const { resolutionProcessing } = require('../services/officerService');

@@ -42,6 +42,25 @@ const supportComplaint = async (req, res) => {
 
     // Increment complaint support count
     complaint.supportCount = (complaint.supportCount || 0) + 1;
+
+    // Auto priority escalation at threshold of 5 upvotes
+    if (complaint.supportCount >= 5 && (complaint.priority === 'Low' || complaint.priority === 'Medium')) {
+      const oldPriority = complaint.priority;
+      complaint.priority = 'High';
+      complaint.timeline.push({
+        status: complaint.status,
+        title: 'Priority Escalated',
+        description: `Priority automatically escalated from ${oldPriority} to High due to community upvotes (Threshold: 5 upvotes reached).`,
+        timestamp: new Date(),
+      });
+      await Notification.create({
+        recipient: complaint.citizen,
+        title: 'Issue Priority Escalated 🚀',
+        message: `Your complaint "${complaint.title}" has been escalated to High priority due to community support!`,
+        type: 'Complaint Status',
+      });
+    }
+
     await complaint.save();
 
     // Reward points to citizen supporting: 5 points
@@ -50,6 +69,14 @@ const supportComplaint = async (req, res) => {
     user.points += 5;
     user.level = getLevelFromPoints(user.points);
     await user.save();
+
+    // Create system notification for supporting citizen
+    await Notification.create({
+      recipient: userId,
+      title: 'XP Earned! 🌟',
+      message: `You earned +5 XP for supporting the complaint: "${complaint.title}".`,
+      type: 'Points Added',
+    });
 
     // Notify original reporter
     await Notification.create({

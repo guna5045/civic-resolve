@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -20,44 +20,52 @@ import {
   X,
 } from 'lucide-react';
 import { ROLES } from '../constants/roles';
+import { LanguageContext } from '../context/LanguageContext';
 
 const Sidebar = ({ role, user, isOpen, toggleSidebar }) => {
   const location = useLocation();
+  const { t } = useContext(LanguageContext);
+
+  const getRoleKey = (r) => {
+    if (r === ROLES.ADMIN) return 'admin';
+    if (r === ROLES.OFFICER) return 'officer';
+    return 'citizen';
+  };
 
   const getCitizenMenu = () => [
-    { label: 'Dashboard', path: '/citizen', icon: LayoutDashboard },
-    { label: 'Report Issue', path: '/citizen/report', icon: AlertTriangle },
-    { label: 'Nearby Issues', path: '/citizen/nearby', icon: MapPin },
-    { label: 'My Complaints', path: '/citizen/my-complaints', icon: List },
-    { label: 'Supported Issues', path: '/citizen/supported', icon: Heart },
-    { label: 'Public Map', path: '/citizen/map', icon: Map },
-    { label: 'Rewards', path: '/citizen/rewards', icon: Award },
-    { label: 'Notifications', path: '/citizen/notifications', icon: Bell },
-    { label: 'Profile', path: '/citizen/profile', icon: User },
+    { label: t('nav.dashboard'), path: '/citizen', icon: LayoutDashboard },
+    { label: t('nav.nearbyIssues'), path: '/citizen/nearby', icon: MapPin },
+    { label: t('nav.reportIssue'), path: '/citizen/report', icon: AlertTriangle },
+    { label: t('nav.myComplaints'), path: '/citizen/my-complaints', icon: List },
+    { label: t('nav.supportedIssues'), path: '/citizen/supported', icon: Heart },
+    { label: t('nav.publicMap'), path: '/citizen/map', icon: Map },
+    { label: t('nav.rewards'), path: '/citizen/rewards', icon: Award },
+    { label: t('nav.notifications'), path: '/citizen/notifications', icon: Bell },
+    { label: t('nav.profile'), path: '/citizen/profile', icon: User },
   ];
 
   const getOfficerMenu = () => [
-    { label: 'Dashboard', path: '/officer', icon: LayoutDashboard },
-    { label: 'Assigned Issues', path: '/officer/assigned', icon: List },
-    { label: 'Department Map', path: '/officer/map', icon: Map },
-    { label: 'Reports', path: '/officer/reports', icon: FileText },
-    { label: 'Analytics', path: '/officer/analytics', icon: BarChart2 },
-    { label: 'Notifications', path: '/officer/notifications', icon: Bell },
-    { label: 'Profile', path: '/officer/profile', icon: User },
+    { label: t('nav.dashboard'), path: '/officer', icon: LayoutDashboard },
+    { label: t('nav.assignedIssues'), path: '/officer/assigned', icon: List },
+    { label: t('nav.departmentMap'), path: '/officer/map', icon: Map },
+    { label: t('nav.reports'), path: '/officer/reports', icon: FileText },
+    { label: t('nav.analytics'), path: '/officer/analytics', icon: BarChart2 },
+    { label: t('nav.notifications'), path: '/officer/notifications', icon: Bell },
+    { label: t('nav.profile'), path: '/officer/profile', icon: User },
   ];
 
   const getAdminMenu = () => [
-    { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-    { label: 'Departments', path: '/admin/departments', icon: Layers },
-    { label: 'Officers', path: '/admin/officers', icon: Users },
-    { label: 'Complaints', path: '/admin/complaints', icon: List },
-    { label: 'Escalations', path: '/admin/escalations', icon: ShieldAlert },
-    { label: 'Analytics', path: '/admin/analytics', icon: BarChart2 },
-    { label: 'Reports', path: '/admin/reports', icon: FileText },
-    { label: 'Rewards', path: '/admin/rewards', icon: Award },
-    { label: 'Audit Logs', path: '/admin/audit-logs', icon: History },
-    { label: 'Settings', path: '/admin/settings', icon: Settings },
-    { label: 'Profile', path: '/admin/profile', icon: User },
+    { label: t('nav.dashboard'), path: '/admin', icon: LayoutDashboard },
+    { label: t('nav.departments'), path: '/admin/departments', icon: Layers },
+    { label: t('nav.officers'), path: '/admin/officers', icon: Users },
+    { label: t('nav.complaints'), path: '/admin/complaints', icon: List },
+    { label: t('nav.escalations'), path: '/admin/escalations', icon: ShieldAlert },
+    { label: t('nav.analytics'), path: '/admin/analytics', icon: BarChart2 },
+    { label: t('nav.reports'), path: '/admin/reports', icon: FileText },
+    { label: t('nav.rewards'), path: '/admin/rewards', icon: Award },
+    { label: t('nav.auditLogs'), path: '/admin/audit-logs', icon: History },
+    { label: t('nav.settings'), path: '/admin/settings', icon: Settings },
+    { label: t('nav.profile'), path: '/admin/profile', icon: User },
   ];
 
   const getMenuItems = () => {
@@ -95,7 +103,7 @@ const Sidebar = ({ role, user, isOpen, toggleSidebar }) => {
         <div className="flex h-20 items-center justify-between px-6 border-b border-slate-800">
           <Link to="/" className="flex items-center gap-2">
             <span className="bg-gradient-to-r from-brand-400 to-violet-500 bg-clip-text text-xl font-bold tracking-tight text-transparent">
-              Civic Resolve
+              {t('nav.brand')}
             </span>
           </Link>
           <button
@@ -115,13 +123,13 @@ const Sidebar = ({ role, user, isOpen, toggleSidebar }) => {
             <div className="overflow-hidden">
               <h4 className="truncate text-sm font-semibold text-slate-100">{user?.fullName}</h4>
               <span className="text-xs text-brand-400 font-medium block uppercase tracking-wide">
-                {role === ROLES.CITIZEN ? `Lvl ${user?.level || 1} Citizen` : role}
+                {role === ROLES.CITIZEN ? `Lvl ${user?.level || 1} ${t('auth.citizen')}` : t(`auth.${getRoleKey(role)}`)}
               </span>
             </div>
           </div>
           {role === ROLES.CITIZEN && (
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/40 pt-2.5">
-              <span>XP Points:</span>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/40 pt-2.5 font-mono">
+              <span>{t('dashboard.points')}:</span>
               <span className="font-semibold text-slate-200">{user?.points || 0} pts</span>
             </div>
           )}
@@ -139,13 +147,13 @@ const Sidebar = ({ role, user, isOpen, toggleSidebar }) => {
                 onClick={() => {
                   if (window.innerWidth < 1024) toggleSidebar();
                 }}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all relative border-l-4 ${
                   isActive
-                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    ? 'bg-brand-500/10 border-brand-600 dark:border-brand-500 text-brand-600 dark:text-brand-400 font-bold shadow-sm'
+                    : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                 }`}
               >
-                <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <Icon className={`h-4.5 w-4.5 transition-colors ${isActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400'}`} />
                 {item.label}
               </Link>
             );

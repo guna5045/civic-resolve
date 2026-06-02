@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES } from '../constants/roles';
@@ -11,25 +11,87 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
+  Map,
+  Layers,
+  FileText,
+  History,
+  ShieldCheck,
+  Globe,
+  Sun,
+  Moon,
+  Accessibility,
+  Check
 } from 'lucide-react';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
+import { LanguageContext } from '../context/LanguageContext';
+import { ThemeContext } from '../context/ThemeContext';
+import { AccessibilityContext } from '../context/AccessibilityContext';
 
 const LandingPage = () => {
-  const { login, register, error: authError } = useAuth();
+  const { login, register, error: authError, demoLogin } = useAuth();
   const navigate = useNavigate();
 
-  // Tab & Auth Mode states
+  // Context hook loaders
+  const { locale, changeLanguage, t } = useContext(LanguageContext);
+  const { theme, toggleTheme } = useContext(ThemeContext);
+  const { setIsPanelOpen } = useContext(AccessibilityContext);
+
+  // Synchronized global role state
   const [selectedRole, setSelectedRole] = useState(ROLES.CITIZEN);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
+
+  // Dropdown visibility states
+  const [showHeaderLangDropdown, setShowHeaderLangDropdown] = useState(false);
+
+  // Refs for click outside handling
+  const headerLangRef = useRef(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'हिंदी' },
+    { code: 'te', name: 'తెలుగు' },
+    { code: 'ta', name: 'தமிழ்' },
+    { code: 'kn', name: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'മലയാളം' }
+  ];
+
+  // Close dropdown on click outside, Esc key, focus loss
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (headerLangRef.current && !headerLangRef.current.contains(e.target)) {
+        setShowHeaderLangDropdown(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowHeaderLangDropdown(false);
+      }
+    };
+    const handleFocusOutline = (e) => {
+      if (headerLangRef.current && !headerLangRef.current.contains(e.target)) {
+        setShowHeaderLangDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('focusin', handleFocusOutline);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('focusin', handleFocusOutline);
+    };
+  }, []);
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +101,7 @@ const LandingPage = () => {
     try {
       if (isRegisterMode && selectedRole === ROLES.CITIZEN) {
         if (!fullName || !email || !mobile || !password) {
-          setValidationError('All fields are required for registration.');
+          setValidationError(t('validation.allRequired') || 'All fields are required for registration.');
           setLoading(false);
           return;
         }
@@ -47,7 +109,7 @@ const LandingPage = () => {
         navigate('/citizen');
       } else {
         if (!email || !password) {
-          setValidationError('Please enter both identifier and password.');
+          setValidationError(t('validation.enterCredentials') || 'Please enter both email and password.');
           setLoading(false);
           return;
         }
@@ -69,53 +131,205 @@ const LandingPage = () => {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setValidationError('');
+    setLoading(true);
+    try {
+      const user = await demoLogin(selectedRole);
+      // Redirect based on role
+      if (user.role === ROLES.ADMIN) {
+        navigate('/admin');
+      } else if (user.role === ROLES.OFFICER) {
+        navigate('/officer');
+      } else {
+        navigate('/citizen');
+      }
+    } catch (err) {
+      setValidationError(t('validation.demoFailed') || 'Demo access failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Icon maps for features
+  const citizenIcons = [MapPin, Users, History, Award, Map];
+  const officerIcons = [ShieldAlert, CheckCircle, Map, TrendingUp, FileText];
+  const adminIcons = [Layers, Users, ShieldCheck, TrendingUp, History];
+
+  const getRoleIcons = (role) => {
+    if (role === ROLES.ADMIN) return adminIcons;
+    if (role === ROLES.OFFICER) return officerIcons;
+    return citizenIcons;
+  };
+
+  const getRoleKey = (role) => {
+    if (role === ROLES.ADMIN) return 'admin';
+    if (role === ROLES.OFFICER) return 'officer';
+    return 'citizen';
+  };
+
+  // Get active statistics layout values based on current role
+  const getRoleStats = () => {
+    switch (selectedRole) {
+      case ROLES.OFFICER:
+        return {
+          title: t('benefits.officerIndexHeader'),
+          percentage: 88,
+          metrics: [
+            { value: "18", label: t('benefits.officerAssignedIssues') },
+            { value: "342", label: t('benefits.officerResolvedIssues') },
+            { value: "3.8 Days", label: t('benefits.officerAvgResolution') }
+          ]
+        };
+      case ROLES.ADMIN:
+        return {
+          title: t('benefits.adminIndexHeader'),
+          percentage: 91.8,
+          metrics: [
+            { value: "12", label: t('benefits.adminDepartments') },
+            { value: "142", label: t('benefits.adminActiveOfficers') },
+            { value: "91.8%", label: t('benefits.adminCityResolution') }
+          ]
+        };
+      case ROLES.CITIZEN:
+      default:
+        return {
+          title: t('benefits.indexHeader'),
+          percentage: 94.2,
+          metrics: [
+            { value: "1,248", label: t('benefits.citizenIssuesReported') },
+            { value: "8,420", label: t('benefits.citizenCommunitySupport') },
+            { value: "94.2%", label: t('benefits.citizenResolutionSuccess') }
+          ]
+        };
+    }
+  };
+
+  const activeStats = getRoleStats();
+  const activeIcons = getRoleIcons(selectedRole);
+
   return (
-    <div className="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-brand-500 selection:text-white">
+    <div className="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-brand-500 selection:text-white flex flex-col">
+      
+      {/* Top Sticky Header */}
+      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-900 w-full">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2.5 cursor-pointer hover:opacity-90"
+          >
+            <div className="h-9 w-9 rounded-lg bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-600/35">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="font-extrabold text-base tracking-tight text-slate-100 block leading-tight">
+                {t('nav.brand')}
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Actions Toggles */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Header Language Dropdown */}
+            <div className="relative" ref={headerLangRef}>
+              <button
+                onClick={() => setShowHeaderLangDropdown(!showHeaderLangDropdown)}
+                className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition-colors flex items-center gap-1"
+                aria-label="Language Selector"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="text-[10px] font-bold uppercase hidden sm:inline">{locale}</span>
+              </button>
+              {showHeaderLangDropdown && (
+                <div className="absolute right-0 mt-2 w-36 rounded-xl border border-slate-800 bg-slate-900 shadow-xl overflow-hidden z-50 py-1">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        changeLanguage(lang.code);
+                        setShowHeaderLangDropdown(false);
+                      }}
+                      className={`flex w-full items-center justify-between px-3 py-1.5 text-xs transition-colors ${
+                        locale === lang.code
+                          ? 'bg-brand-600 text-white font-semibold'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                      }`}
+                    >
+                      <span>{lang.name}</span>
+                      {locale === lang.code && <Check className="h-3 w-3" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Header Theme Toggler */}
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition-colors"
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
+            {/* Header Accessibility Button */}
+            <button
+              onClick={() => setIsPanelOpen(true)}
+              className="rounded-lg p-2 text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition-colors"
+              title={t('accessibility.tooltip')}
+            >
+              <Accessibility className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* 1. Header Hero Panel */}
-      <section className="relative overflow-hidden pt-20 pb-16 md:pt-28 md:pb-24 border-b border-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-900/20 via-slate-950 to-slate-950">
+      <section className="relative overflow-hidden pt-16 pb-16 md:pt-24 md:pb-24 border-b border-slate-900 hero-radial-bg flex-1">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Hero text branding */}
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand-500/30 bg-brand-500/10 text-xs font-semibold text-brand-400">
-              <Sparkles className="h-3.5 w-3.5" /> Transform Municipal Governance
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full hero-badge text-xs font-semibold">
+              <Sparkles className="h-3.5 w-3.5" /> {t('hero.badge')}
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none text-slate-100 font-sans">
-              AI-Powered <br />
-              <span className="bg-gradient-to-r from-brand-400 to-violet-500 bg-clip-text text-transparent">
-                Civic Issue Resolution
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-slate-100 font-sans">
+              {t('hero.title')}
+              <span className="bg-gradient-to-r from-brand-400 to-violet-500 bg-clip-text text-transparent block mt-2 text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
+                {t('hero.subtitle')}
               </span>
             </h1>
-            <p className="text-lg text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-              Bridging the gap between citizens and municipal authorities. Report complaints, support local issues, track resolution timelines transparently, and earn civic rewards.
+            <p className="text-base text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              {t('hero.description')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
-              <a href="#how-it-works">
-                <Button variant="secondary" className="w-full sm:w-auto">
-                  Explore How it Works
-                </Button>
-              </a>
-              <a href="#login-section">
-                <Button variant="primary" className="w-full sm:w-auto group">
-                  Report an Issue Now
-                  <ArrowRight className="h-4 w-4 ml-1.5 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </a>
+              <button
+                onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center justify-center font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-slate-950 px-5 py-3 text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/20 active:scale-95 cursor-pointer w-full sm:w-auto"
+              >
+                {t('hero.ctaExplore')}
+              </button>
+              <button
+                onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center justify-center font-bold rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-slate-950 px-5 py-3 text-sm bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700/60 active:scale-95 cursor-pointer w-full sm:w-auto"
+              >
+                {t('hero.ctaFeatures')}
+              </button>
             </div>
           </div>
 
           {/* Login Container Box */}
-          <div id="login-section" className="lg:col-span-5">
+          <div id="login-section" className="lg:col-span-5 scroll-mt-24">
             <div className="glass-panel rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8">
               
-              {/* Role Toggle Header */}
-              <div className="space-y-1.5 text-center mb-6">
-                <h3 className="text-xl font-bold text-slate-100">Portal Access</h3>
-                <p className="text-xs text-slate-500">Select your profile to authenticate</p>
+              {/* Header with Portal Access title */}
+              <div className="pb-4 border-b border-slate-800/80 mb-5">
+                <h3 className="text-lg font-bold text-slate-100">{t('nav.portalAccess')}</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">{t('nav.selectProfile')}</p>
               </div>
 
-              {/* Toggles */}
-              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-950 border border-slate-900 mb-6">
+              {/* Synchronized Role Toggles */}
+              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-950 border border-slate-900 mb-5">
                 {[ROLES.CITIZEN, ROLES.OFFICER, ROLES.ADMIN].map((role) => (
                   <button
                     key={role}
@@ -125,13 +339,17 @@ const LandingPage = () => {
                       setIsRegisterMode(false);
                       setValidationError('');
                     }}
-                    className={`py-2 text-[11px] font-bold rounded-md uppercase tracking-wider transition-all ${
+                    className={`py-2 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all ${
                       selectedRole === role
                         ? 'bg-brand-600 text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
-                    {role === ROLES.CITIZEN ? 'Citizen' : role === ROLES.OFFICER ? 'Officer' : 'Admin'}
+                    {role === ROLES.CITIZEN 
+                      ? t('auth.citizen') 
+                      : role === ROLES.OFFICER 
+                      ? t('auth.officer') 
+                      : t('auth.admin')}
                   </button>
                 ))}
               </div>
@@ -147,9 +365,9 @@ const LandingPage = () => {
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {isRegisterMode && selectedRole === ROLES.CITIZEN && (
                   <Input
-                    label="Full Name"
+                    label={t('auth.fullName')}
                     name="name"
-                    placeholder="Enter your name"
+                    placeholder={t('auth.fullNamePlaceholder')}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
@@ -159,15 +377,15 @@ const LandingPage = () => {
                 <Input
                   label={
                     selectedRole === ROLES.CITIZEN
-                      ? 'Email Address'
+                      ? t('auth.email')
                       : selectedRole === ROLES.OFFICER
-                      ? 'Officer ID (Email)'
-                      : 'Admin ID (Email)'
+                      ? t('auth.officerEmail')
+                      : t('auth.adminEmail')
                   }
                   name="email"
                   type="email"
                   placeholder={
-                    selectedRole === ROLES.CITIZEN ? 'citizen@example.com' : 'officer@civic.gov'
+                    selectedRole === ROLES.CITIZEN ? t('auth.emailPlaceholder') : 'officer@civicresolve.gov'
                   }
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -176,10 +394,10 @@ const LandingPage = () => {
 
                 {isRegisterMode && selectedRole === ROLES.CITIZEN && (
                   <Input
-                    label="Mobile Number"
+                    label={t('auth.mobile')}
                     name="mobile"
                     type="tel"
-                    placeholder="+1 (555) 000-0000"
+                    placeholder={t('auth.mobilePlaceholder')}
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     required
@@ -187,18 +405,30 @@ const LandingPage = () => {
                 )}
 
                 <Input
-                  label="Password"
+                  label={t('auth.password')}
                   name="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
 
                 <Button type="submit" loading={loading} className="w-full mt-2">
-                  {isRegisterMode ? 'Register Account' : 'Authenticate Credentials'}
+                  {isRegisterMode ? t('auth.register') : t('auth.signIn')}
                 </Button>
+                
+                {/* Demo Sign In Button */}
+                {!isRegisterMode && (
+                  <button
+                    type="button"
+                    onClick={handleDemoLogin}
+                    disabled={loading}
+                    className="w-full mt-2 py-2.5 text-xs font-bold rounded-lg border border-brand-500/30 bg-brand-500/5 hover:bg-brand-500/10 text-brand-400 transition-all active:scale-95 text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> {t('auth.demoAccess')}
+                  </button>
+                )}
               </form>
 
               {/* Mode Toggle Footer */}
@@ -206,22 +436,22 @@ const LandingPage = () => {
                 <div className="mt-4 pt-4 border-t border-slate-800/60 text-center text-xs text-slate-500">
                   {isRegisterMode ? (
                     <>
-                      Already have an account?{' '}
+                      {t('auth.alreadyHaveAccount')}{' '}
                       <button
                         onClick={() => setIsRegisterMode(false)}
                         className="text-brand-400 hover:underline font-semibold"
                       >
-                        Login here
+                        {t('auth.loginHere')}
                       </button>
                     </>
                   ) : (
                     <>
-                      First time reporting?{' '}
+                      {t('auth.firstTime')}{' '}
                       <button
                         onClick={() => setIsRegisterMode(true)}
                         className="text-brand-400 hover:underline font-semibold"
                       >
-                        Register here
+                        {t('auth.registerHere')}
                       </button>
                     </>
                   )}
@@ -232,130 +462,168 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* 2. Key Features section */}
-      <section className="py-20 max-w-7xl mx-auto px-6 border-b border-slate-900">
-        <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
-          <h2 className="text-3xl font-extrabold text-slate-100">Key Platform Features</h2>
+      {/* 2. Interactive Role-Specific Platform Capabilities Tabs */}
+      <section id="features-section" className="py-20 max-w-7xl mx-auto px-6 border-b border-slate-900 scroll-mt-20">
+        <div className="text-center max-w-2xl mx-auto space-y-3 mb-12">
+          <h2 className="text-3xl font-extrabold text-slate-100">{t('capabilities.title')}</h2>
           <p className="text-sm text-slate-400">
-            A specialized toolset designed to solve critical public issues with absolute efficiency.
+            {t('capabilities.subtitle')}
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 w-fit">
-              <ShieldAlert className="h-6 w-6" />
-            </div>
-            <h4 className="text-lg font-bold text-slate-100">AI Complaint Summaries</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Google Gemini automatically catalogs and translates citizen reports, listing safety hazards and formatting priorities to streamline work allocations.
-            </p>
-          </div>
 
-          <div className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 w-fit">
-              <Users className="h-6 w-6" />
-            </div>
-            <h4 className="text-lg font-bold text-slate-100">Prevent Duplicate Submissions</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Nearby complaints are mapped dynamically. Citizens can support an existing complaint with one click to boost priority instead of creating duplicates.
-            </p>
-          </div>
+        {/* Tab Switcher Headers (Synchronized with selectedRole) */}
+        <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-950 border border-slate-900 max-w-lg mx-auto mb-12">
+          {[
+            { key: ROLES.CITIZEN, label: t('capabilities.citizenPortal') },
+            { key: ROLES.OFFICER, label: t('capabilities.officerWorkspace') },
+            { key: ROLES.ADMIN, label: t('capabilities.governanceAdmin') },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setSelectedRole(tab.key);
+                setIsRegisterMode(false);
+                setValidationError('');
+              }}
+              className={`py-2.5 text-[11px] font-bold rounded-lg uppercase tracking-wider transition-all ${
+                selectedRole === tab.key
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
-            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 w-fit">
-              <Award className="h-6 w-6" />
+        {/* Tab Body Header sub-hero */}
+        <div className="max-w-4xl mx-auto text-center mb-12 bg-slate-900/30 border border-slate-900 rounded-2xl p-6">
+          <h3 className="text-lg md:text-xl font-medium text-slate-200 italic leading-relaxed">
+            "{t(`capabilities.${getRoleKey(selectedRole)}.hero`)}"
+          </h3>
+        </div>
+
+        {/* Features list grid (5 features + 1 Highlighted benefit card) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[1, 2, 3, 4, 5].map((index) => {
+            const Icon = activeIcons[index - 1] || Sparkles;
+            return (
+              <div key={index} className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-400 w-fit">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-slate-100">
+                    {t(`capabilities.${getRoleKey(selectedRole)}.f${index}Title`)}
+                  </h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {t(`capabilities.${getRoleKey(selectedRole)}.f${index}Desc`)}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Highlighted Benefit Card */}
+          <div className="glass-panel rounded-2xl benefit-card-highlight p-6 flex flex-col justify-between shadow-lg shadow-brand-500/5">
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h4 className="text-base font-bold text-slate-100">
+                {t('capabilities.benefitHeader')}
+              </h4>
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                {t(`capabilities.${getRoleKey(selectedRole)}.benefit`)}
+              </p>
             </div>
-            <h4 className="text-lg font-bold text-slate-100">Citizen Badges & Rewards</h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Civic participation is rewarded. Accumulate reputation points for reports and upvotes, climb citizen levels, and earn prestigious digital badges.
-            </p>
+            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded w-fit mt-4">
+              {t('capabilities.primaryBenefit')}
+            </span>
           </div>
         </div>
       </section>
 
       {/* 3. How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-slate-950 max-w-7xl mx-auto px-6 border-b border-slate-900">
+      <section id="how-it-works" className="py-20 bg-slate-950 max-w-7xl mx-auto px-6 border-b border-slate-900 scroll-mt-20">
         <div className="text-center max-w-2xl mx-auto space-y-3 mb-16">
-          <h2 className="text-3xl font-extrabold text-slate-100">How Civic Resolve Operates</h2>
+          <h2 className="text-3xl font-extrabold text-slate-100">{t('workflow.title')}</h2>
           <p className="text-sm text-slate-400">
-            A transparent workflow showing every step from initial reporting to resolution.
+            {t('workflow.subtitle')}
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-          {[
-            { step: '1', title: 'File a Report', text: 'Select location, tag category, select priority, upload photo, and submit.' },
-            { step: '2', title: 'AI Classification', description: 'Gemini summarizes the complaint, matches relevant department, and assigns SLA.' },
-            { step: '3', title: 'Officer Dispatched', text: 'The assigned officer inspects the site, moves status to in-progress, and resolves.' },
-            { step: '4', title: 'Resolution Shared', text: 'Citizen receives notification with resolution notes and images. XP points are awarded.' },
-          ].map((item, index) => (
-            <div key={index} className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4 relative">
-              <span className="text-5xl font-extrabold text-brand-500/15 absolute right-4 top-4">
-                {item.step}
+          {[1, 2, 3, 4].map((stepNum) => (
+            <div key={stepNum} className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4 relative">
+              <span className="text-5xl font-extrabold text-brand-500/15 absolute right-4 top-4 font-sans">
+                {t(`workflow.step${stepNum}`)}
               </span>
-              <h4 className="text-base font-bold text-slate-100 pt-4">{item.title}</h4>
+              <h4 className="text-base font-bold text-slate-100 pt-4">
+                {t(`workflow.step${stepNum}Title`)}
+              </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                {item.text || item.description}
+                {t(`workflow.step${stepNum}Desc`)}
               </p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 4. Benefits Section */}
+      {/* 4. Benefits & Synchronized Statistics Section */}
       <section className="py-20 max-w-7xl mx-auto px-6 border-b border-slate-900 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div className="space-y-6">
-          <h2 className="text-3xl font-extrabold text-slate-100">Municipal & Citizen Benefits</h2>
+          <h2 className="text-3xl font-extrabold text-slate-100">{t('benefits.title')}</h2>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Designed for municipal departments to handle complaints efficiently, and for citizens to feel their voice is valued.
+            {t('benefits.subtitle')}
           </p>
           <div className="space-y-4">
-            {[
-              'Reduce administrative delays by up to 40% with AI classification',
-              'Eliminate redundant tasks through local support maps',
-              'Transparent timeline logs prevent complaint neglect',
-              'Excel/PDF analytics reporting helps administrative audits',
-            ].map((text, i) => (
-              <div key={i} className="flex items-start gap-3">
+            {[1, 2, 3, 4].map((num) => (
+              <div key={num} className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-300 leading-normal">{text}</span>
+                <span className="text-xs text-slate-300 leading-normal">{t(`benefits.${getRoleKey(selectedRole)}Benefit${num}`)}</span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* Dynamic Statistics Panel linked to global selectedRole */}
         <div className="glass-panel rounded-2xl border border-slate-800 p-8 space-y-6">
           <div className="flex items-center gap-3">
             <TrendingUp className="h-5 w-5 text-brand-400" />
-            <h4 className="text-lg font-bold text-slate-100">Governance Transparency Index</h4>
+            <h4 className="text-lg font-bold text-slate-100">{activeStats.title}</h4>
           </div>
           <div className="h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-            <div className="h-full bg-brand-600 rounded-full" style={{ width: '85%' }} />
+            <div 
+              className="h-full bg-brand-600 rounded-full transition-all duration-500 ease-out" 
+              style={{ width: `${activeStats.percentage}%` }} 
+            />
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <span className="block text-2xl font-bold text-slate-200">85%</span>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Response Speed</span>
-            </div>
-            <div>
-              <span className="block text-2xl font-bold text-slate-200">92%</span>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Resolution Rate</span>
-            </div>
-            <div>
-              <span className="block text-2xl font-bold text-slate-200">4.8/5</span>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold">Citizen Rating</span>
-            </div>
+            {activeStats.metrics.map((metric, idx) => (
+              <div key={idx}>
+                <span className="block text-2xl font-bold text-slate-200">{metric.value}</span>
+                <span className="text-[9px] text-slate-500 uppercase font-semibold leading-tight block mt-1">
+                  {metric.label}
+                </span>
+              </div>
+            ))}
           </div>
+          <p className="text-[10px] text-slate-500 italic text-center mt-2">
+            {t('benefits.disclaimer')}
+          </p>
         </div>
       </section>
 
       {/* 5. Footer */}
-      <footer className="py-12 border-t border-slate-900 bg-slate-950/60">
+      <footer className="py-12 border-t border-slate-900 bg-slate-950/60 mt-auto">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <h4 className="text-sm font-bold text-slate-200">Civic Resolve Platform</h4>
-            <p className="text-xs text-slate-500">AI-Powered Citizen Governance and Service Resolution.</p>
+            <h4 className="text-sm font-bold text-slate-200">{t('footer.brand')}</h4>
+            <p className="text-xs text-slate-500">{t('footer.subtitle')}</p>
           </div>
           <p className="text-[10px] text-slate-600 text-center md:text-right leading-normal">
-            &copy; {new Date().getFullYear()} Civic Resolve Inc. Municipal Technology. All rights reserved.
+            &copy; {new Date().getFullYear()} {t('footer.copy')}
           </p>
         </div>
       </footer>

@@ -188,7 +188,7 @@ const generatePDFReport = async (complaint, fileName = 'complaint_details.pdf') 
 
       if (complaint.aiSummary) {
         doc.moveDown();
-        doc.font('Helvetica-Bold').text('AI Generated Summary:');
+        doc.font('Helvetica-Bold').text('AI-Assisted Summary:');
         doc.font('Helvetica').text(complaint.aiSummary);
       }
 

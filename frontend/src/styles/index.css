@@ -2,18 +2,182 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Default: Light Mode Theme colors */
+  --bg-primary: #f8fafc; /* slate-50 */
+  --bg-secondary: #ffffff; /* white */
+  --bg-tertiary: #f1f5f9; /* slate-100 */
+  --text-primary: #0f172a; /* slate-900 */
+  --text-secondary: #475569; /* slate-600 */
+  --border-color: #e2e8f0; /* slate-200 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --input-bg: #f8fafc;
+
+  /* Hover variables */
+  --bg-hover: #ffffff;
+  --border-hover: #8b5cf6;
+  --text-hover: #0f172a;
+  
+  /* Radial gradients */
+  --bg-gradient-from: rgba(99, 102, 241, 0.04); /* very soft indigo */
+  --bg-gradient-via: #f8fafc;
+  --bg-gradient-to: #f8fafc;
+
+  /* Accessibility multipliers */
+  --text-scale: 1.0;
+  --line-height-factor: 1.5;
+  --letter-spacing: normal;
+}
+
+/* Dark Mode Theme colors */
+.dark {
+  --bg-primary: #020617; /* slate-950 */
+  --bg-secondary: #0f172a; /* slate-900 */
+  --bg-tertiary: #1e293b; /* slate-800 */
+  --text-primary: #f1f5f9; /* slate-100 */
+  --text-secondary: #94a3b8; /* slate-400 */
+  --border-color: #1e293b; /* slate-800 */
+  --glass-bg: rgba(15, 23, 42, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --input-bg: #020617;
+
+  /* Hover variables */
+  --bg-hover: #1e293b;
+  --border-hover: rgba(139, 92, 246, 0.45);
+  --text-hover: #f1f5f9;
+
+  /* Radial gradients */
+  --bg-gradient-from: rgba(99, 102, 241, 0.15); /* deeper brand glow */
+  --bg-gradient-via: #020617;
+  --bg-gradient-to: #020617;
+}
+
+/* Accessibility: High Contrast overrides (Black & White style) */
+.high-contrast {
+  --bg-primary: #ffffff !important;
+  --bg-secondary: #ffffff !important;
+  --bg-tertiary: #ffffff !important;
+  --text-primary: #000000 !important;
+  --text-secondary: #000000 !important;
+  --border-color: #000000 !important;
+  --glass-bg: #ffffff !important;
+  --glass-border: #000000 !important;
+  --input-bg: #ffffff !important;
+}
+
+/* Accessibility: Dark Contrast overrides (High Contrast Dark style) */
+.dark-contrast {
+  --bg-primary: #000000 !important;
+  --bg-secondary: #000000 !important;
+  --bg-tertiary: #000000 !important;
+  --text-primary: #ffffff !important;
+  --text-secondary: #f1f5f9 !important;
+  --border-color: #ffffff !important;
+  --glass-bg: #000000 !important;
+  --glass-border: #ffffff !important;
+  --input-bg: #000000 !important;
+}
+
+/* Apply scaling and smooth scroll at root level */
+html {
+  scroll-behavior: smooth;
+  font-size: calc(16px * var(--text-scale, 1.0));
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased selection:bg-brand-500 selection:text-white;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: var(--line-height-factor, 1.5);
+    letter-spacing: var(--letter-spacing, normal);
+    @apply antialiased selection:bg-brand-500 selection:text-white transition-colors duration-300;
   }
 }
 
-/* Glassmorphism styles */
+/* Override Tailwind utility classes to bind to CSS Variables */
+.bg-slate-950, 
+.bg-slate-950\/10, 
+.bg-slate-950\/20, 
+.bg-slate-950\/30, 
+.bg-slate-950\/40, 
+.bg-slate-950\/50, 
+.bg-slate-950\/60, 
+.bg-slate-950\/80 {
+  background-color: var(--bg-primary) !important;
+}
+
+.bg-slate-900, 
+.bg-slate-900\/10, 
+.bg-slate-900\/20, 
+.bg-slate-900\/30, 
+.bg-slate-900\/40, 
+.bg-slate-900\/50, 
+.bg-slate-900\/60, 
+.bg-slate-900\/80 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-slate-800, 
+.bg-slate-750, 
+.bg-slate-800\/10, 
+.bg-slate-800\/20, 
+.bg-slate-800\/30, 
+.bg-slate-800\/40, 
+.bg-slate-800\/50, 
+.bg-slate-800\/60, 
+.bg-slate-800\/80 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+select.bg-slate-950, input.bg-slate-950\/60 {
+  background-color: var(--input-bg) !important;
+}
+
+.border-slate-700,
+.border-slate-800, 
+.border-slate-850,
+.border-slate-900, 
+.border-slate-700\/60, 
+.border-slate-800\/30, 
+.border-slate-800\/40, 
+.border-slate-800\/50, 
+.border-slate-800\/60, 
+.border-slate-800\/80,
+.border-slate-900\/30,
+.border-slate-900\/50,
+.border-slate-900\/80 {
+  border-color: var(--border-color) !important;
+}
+
+.text-slate-100, .text-slate-200, .text-slate-300 {
+  color: var(--text-primary) !important;
+}
+.text-slate-400, .text-slate-500, .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+/* Hero radial background and highlight card */
+.hero-radial-bg {
+  background: radial-gradient(ellipse at top, var(--bg-gradient-from), var(--bg-gradient-via), var(--bg-gradient-to)) !important;
+}
+
+.benefit-card-highlight {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), var(--bg-secondary)) !important;
+  border: 2px solid rgba(99, 102, 241, 0.2) !important;
+}
+
+.dark .benefit-card-highlight {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), var(--bg-secondary)) !important;
+  border: 2px solid rgba(99, 102, 241, 0.35) !important;
+}
+
+/* Glassmorphism panel styling */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border) !important;
 }
 
 .glass-panel-hover {
@@ -21,29 +185,61 @@
 }
 
 .glass-panel-hover:hover {
-  background: rgba(15, 23, 42, 0.65);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: var(--glass-bg);
+  border-color: rgba(139, 92, 246, 0.3) !important;
   transform: translateY(-2px);
+}
+
+/* Visible Contrast Hero Badge - Always Dark Mode Styled */
+.hero-badge {
+  background-color: #0f172a !important; /* solid slate-900 */
+  border: 1px solid #312e81 !important; /* solid indigo-900 */
+  color: #a5b4fc !important; /* brand-300 */
+}
+
+/* Hover contrast fixes globally for interactive slate bg utilities */
+.hover\:bg-slate-800:hover,
+.hover\:bg-slate-900:hover,
+.hover\:bg-slate-750:hover,
+.hover\:bg-slate-950:hover,
+.hover\:bg-slate-850:hover,
+.hover\:bg-slate-900\/30:hover,
+.hover\:bg-slate-800\/30:hover,
+.hover\:bg-slate-900\/50:hover,
+.hover\:bg-slate-950\/50:hover,
+.hover\:bg-slate-950\/20:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-hover) !important;
+  outline: 1px solid var(--border-hover) !important;
+  outline-offset: -1px;
+}
+
+/* Highlight Links Accessibility Style */
+.highlight-links a,
+.highlight-links button:not(.btn-primary) {
+  text-decoration: underline !important;
+  outline: 2px solid #8b5cf6 !important;
+  outline-offset: 2px !important;
 }
 
 /* Leaflet Map overrides for styling */
 .leaflet-container {
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
   font-family: inherit;
 }
 
 .leaflet-bar {
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-secondary) !important;
   backdrop-filter: blur(8px);
 }
 
 .leaflet-bar a {
   background: transparent !important;
-  color: #f1f5f9 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
 .leaflet-bar a:hover {
@@ -51,10 +247,10 @@
 }
 
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: rgba(15, 23, 42, 0.95) !important;
+  background: var(--bg-secondary) !important;
   backdrop-filter: blur(12px);
-  color: #f1f5f9 !important;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color);
   border-radius: 0.5rem;
 }
 
@@ -65,7 +261,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(15, 23, 42, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
