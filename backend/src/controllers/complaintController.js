@@ -52,6 +52,7 @@ const createComplaint = async (req, res) => {
       title,
       description,
       aiSummary: aiAnalysis.summary,
+      aiReason: aiAnalysis.reason || '',
       category: aiAnalysis.category,
       priority: aiAnalysis.priority,
       originalPriority: aiAnalysis.priority,
@@ -163,6 +164,16 @@ const getComplaints = async (req, res) => {
     ];
   }
 
+  // Officer department filtering
+  if (req.user.role === 'Department Officer') {
+    if (req.user.department) {
+      query.department = req.user.department;
+    } else {
+      const mongoose = require('mongoose');
+      query.department = new mongoose.Types.ObjectId(); // dummy to return empty array
+    }
+  }
+
   try {
     const complaints = await Complaint.find(query)
       .populate('citizen', 'fullName email mobile profilePhoto')
@@ -190,6 +201,11 @@ const getComplaintById = async (req, res) => {
 
     if (!complaint) {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Access control for Department Officers
+    if (req.user.role === 'Department Officer' && String(complaint.department?._id || complaint.department) !== String(req.user.department)) {
+      return res.status(403).json({ success: false, message: 'Access denied: Complaint belongs to a different department' });
     }
 
     res.json({ success: true, data: complaint });
@@ -227,6 +243,7 @@ const getNearbyComplaints = async (req, res) => {
     const complaints = await Complaint.find({
       latitude: { $gte: minLat, $lte: maxLat },
       longitude: { $gte: minLng, $lte: maxLng },
+      status: { $nin: ['Closed', 'Rejected', 'Rejected By Officer', 'Cancelled'] }
     })
       .populate('citizen', 'fullName email')
       .populate('department', 'name')
@@ -245,7 +262,7 @@ const getNearbyComplaints = async (req, res) => {
  */
 const updateComplaintStatus = async (req, res) => {
   const { status, notes } = req.body;
-  const resolutionImages = req.files
+  const uploadedFiles = req.files
     ? req.files.map((file) => {
         if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
           return file.path;
@@ -261,21 +278,118 @@ const updateComplaintStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
-    complaint.status = status;
-    
-    if (status === 'Resolved') {
-      complaint.resolutionNotes = notes || 'The issue has been resolved by municipal workers.';
-      if (resolutionImages.length > 0) {
-        complaint.resolutionImages = resolutionImages;
-        complaint.afterImages = resolutionImages; // Mirror to afterImages
+    const previousStatus = complaint.status;
+
+    // Role-based status workflow enforcement
+    if (req.user.role === 'Department Officer') {
+      const allowedTargetStatuses = ['Verified', 'Verified By Officer', 'Work Started', 'Rejected By Officer', 'Resolved'];
+      if (!allowedTargetStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Department Officers are only authorized to transition complaints to 'Verified', 'Work Started', 'Rejected By Officer', or 'Resolved'."
+        });
       }
+
+      if (status !== previousStatus) {
+        if (status === 'Verified' || status === 'Verified By Officer') {
+          if (!['Assigned', 'Reassigned'].includes(previousStatus)) {
+            return res.status(400).json({
+              success: false,
+              message: `Cannot transition complaint from status '${previousStatus}' to 'Verified'. Sequence must be Assigned/Reassigned -> Verified.`
+            });
+          }
+        } else if (status === 'Work Started') {
+          if (!['Verified', 'Verified By Officer'].includes(previousStatus)) {
+            return res.status(400).json({
+              success: false,
+              message: `Cannot transition complaint from status '${previousStatus}' to 'Work Started'. Sequence must be Verified -> Work Started.`
+            });
+          }
+        } else if (status === 'Rejected By Officer') {
+          if (!['Assigned', 'Reassigned', 'Verified', 'Verified By Officer'].includes(previousStatus)) {
+            return res.status(400).json({
+              success: false,
+              message: `Cannot transition complaint from status '${previousStatus}' to 'Rejected By Officer'. Sequence must be Assigned or Verified -> Rejected By Officer.`
+            });
+          }
+        } else if (status === 'Resolved') {
+          if (previousStatus !== 'Work Started') {
+            return res.status(400).json({
+              success: false,
+              message: `Cannot transition complaint from status '${previousStatus}' to 'Resolved'. Sequence must be Work Started -> Resolved.`
+            });
+          }
+        }
+      }
+    } else if (req.user.role === 'Admin') {
+      const allowedAdminStatuses = ['Under Review', 'Assigned', 'Closed', 'Rejected', 'Clarification Required', 'In Progress', 'Reassigned', 'Work Started'];
+      if (!allowedAdminStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Admins cannot transition complaints to '${status}' directly via this endpoint.`
+        });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'Unauthorized to modify complaint status.' });
+    }
+
+    // Apply status transition
+    complaint.status = status;
+
+    let timelineTitle = `Status updated to ${status}`;
+    let timelineDescription = notes || `Complaint progress updated by ${req.user.fullName}.`;
+    let citizenNotificationTitle = `Complaint Marked ${status}`;
+    let citizenNotificationMessage = `Your complaint "${complaint.title}" has been marked as ${status} by ${req.user.fullName}.`;
+
+    if (status === 'Verified' || status === 'Verified By Officer') {
+      complaint.verifiedByOfficer = true;
+      complaint.verificationTimestamp = new Date();
+      complaint.verificationStatus = 'Verified';
+      
+      timelineTitle = 'Issue Verified By Officer';
+      timelineDescription = notes || `Officer ${req.user.fullName} verified the issue on-site.`;
+      citizenNotificationTitle = 'Issue Verified';
+      citizenNotificationMessage = `Officer ${req.user.fullName} has verified your complaint "${complaint.title}".`;
+    } 
+    else if (status === 'Work Started') {
+      complaint.workStartTimestamp = new Date();
+      
+      timelineTitle = 'Work Started By Officer';
+      timelineDescription = 'Officer has started repair work.';
+      citizenNotificationTitle = 'Work Started';
+      citizenNotificationMessage = `Officer ${req.user.fullName} has started work on your complaint "${complaint.title}".`;
+    } 
+    else if (status === 'Rejected By Officer') {
+      complaint.rejectionReason = req.body.rejectionReason || notes || '';
+      if (uploadedFiles.length > 0) {
+        complaint.rejectionImages = uploadedFiles;
+      }
+      
+      timelineTitle = 'Rejected By Officer';
+      timelineDescription = complaint.rejectionReason || 'Officer rejected this issue.';
+      citizenNotificationTitle = 'Complaint Rejected by Officer';
+      citizenNotificationMessage = `Officer ${req.user.fullName} has rejected your complaint "${complaint.title}". Reason: ${complaint.rejectionReason}`;
+    } 
+    else if (status === 'Resolved') {
+      complaint.resolutionNotes = req.body.resolutionNotes || req.body.notes || notes || 'The issue has been resolved by municipal workers.';
+      complaint.resolutionSummary = req.body.resolutionSummary || '';
+      complaint.completionTimestamp = new Date();
+      if (uploadedFiles.length > 0) {
+        complaint.resolutionImages = uploadedFiles;
+        complaint.afterImages = uploadedFiles; // Mirror to afterImages
+      }
+
+      timelineTitle = 'Issue Resolved By Officer';
+      timelineDescription = complaint.resolutionNotes;
+      citizenNotificationTitle = 'Resolution Submitted';
+      citizenNotificationMessage = `Officer ${req.user.fullName} has completed repairs and submitted resolution proof for your complaint "${complaint.title}".`;
     }
 
     // Add timeline event
     complaint.timeline.push({
       status: status,
-      title: `Status updated to ${status}`,
-      description: notes || `Complaint progress updated by Officer ${req.user.fullName}.`,
+      title: timelineTitle,
+      description: timelineDescription,
       updatedBy: req.user._id,
       timestamp: new Date(),
     });
@@ -285,19 +399,21 @@ const updateComplaintStatus = async (req, res) => {
     // Notify citizen
     await Notification.create({
       recipient: complaint.citizen,
-      title: `Complaint Marked ${status}`,
-      message: `Your complaint "${complaint.title}" has been marked as ${status} by ${req.user.fullName}.`,
+      title: citizenNotificationTitle,
+      message: citizenNotificationMessage,
       type: 'Complaint Status',
     });
 
-    // Notify Admins on Resolution
-    if (status === 'Resolved') {
+    // Notify Admins on Resolution or Rejection
+    if (status === 'Resolved' || status === 'Rejected By Officer') {
       const admins = await User.find({ role: 'Admin' });
       for (const admin of admins) {
         await Notification.create({
           recipient: admin._id,
-          title: 'Resolution Submitted for Review',
-          message: `Officer ${req.user.fullName} has resolved complaint ID: ${complaint.complaintId}. Review required.`,
+          title: status === 'Resolved' ? 'Resolution Pending Review' : 'Complaint Rejected by Officer',
+          message: status === 'Resolved' 
+            ? `Officer ${req.user.fullName} has resolved complaint ID: ${complaint.complaintId}. Review required.`
+            : `Officer ${req.user.fullName} has rejected complaint ID: ${complaint.complaintId}. Reason: ${complaint.rejectionReason}`,
           type: 'System Alert',
         });
       }
@@ -310,6 +426,82 @@ const updateComplaintStatus = async (req, res) => {
       module: 'Officer Console',
       description: `Transitioned complaint ID: ${complaint.complaintId} status to: ${status}.`,
     }).catch(e => console.error('Failed to log audit:', e));
+
+    res.json({ success: true, data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Clarify / Update complaint details by Citizen
+ * @route   PUT /api/complaints/:id/clarify
+ * @access  Private (Citizen only)
+ */
+const clarifyComplaint = async (req, res) => {
+  const { title, description } = req.body;
+  const newImages = req.files
+    ? req.files.map((file) => {
+        if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+          return file.path;
+        }
+        return `/uploads/${file.filename}`;
+      })
+    : [];
+
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Verify ownership
+    if (String(complaint.citizen) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this complaint' });
+    }
+
+    // Verify status
+    if (complaint.status !== 'Clarification Required') {
+      return res.status(400).json({ success: false, message: 'Clarification is not requested for this complaint' });
+    }
+
+    // Update details
+    if (title) complaint.title = title;
+    if (description) complaint.description = description;
+    if (req.body.clarificationResponse) {
+      complaint.clarificationResponse = req.body.clarificationResponse;
+    }
+    
+    // Append images
+    if (newImages.length > 0) {
+      complaint.images = [...complaint.images, ...newImages];
+    }
+
+    // Move status back to Information Clarified
+    complaint.status = 'Information Clarified';
+
+    // Add timeline event
+    complaint.timeline.push({
+      status: 'Information Clarified',
+      title: 'Information Clarified',
+      description: 'The reporter has updated the requested details. Returned to review queue.',
+      updatedBy: req.user._id,
+      timestamp: new Date(),
+    });
+
+    await complaint.save();
+
+    // Notify Admin
+    const admins = await User.find({ role: 'Admin' });
+    for (const admin of admins) {
+      await Notification.create({
+        recipient: admin._id,
+        title: 'Complaint Clarification Received',
+        message: `Citizen ${req.user.fullName} has updated details for complaint: ${complaint.complaintId}.`,
+        type: 'System Alert',
+      });
+    }
 
     res.json({ success: true, data: complaint });
   } catch (error) {
@@ -401,6 +593,52 @@ const checkDuplicates = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Delete own complaint by Citizen (only before administrative processing)
+ * @route   DELETE /api/complaints/:id
+ * @access  Private (Citizen only)
+ */
+const deleteOwnComplaint = async (req, res) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+    
+    // Verify ownership
+    if (String(complaint.citizen) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this complaint' });
+    }
+    
+    // Verify status: Citizen CAN delete complaint when status is: Submitted, Clarification Required, Information Clarified
+    const allowedStatuses = ['Submitted', 'Clarification Required', 'Information Clarified'];
+    if (!allowedStatuses.includes(complaint.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Once a complaint has been reviewed or verified by the administration, deletion will no longer be permitted.'
+      });
+    }
+
+    await Complaint.findByIdAndDelete(req.params.id);
+
+    // Delete associated supports
+    const Support = require('../models/Support');
+    await Support.deleteMany({ complaint: req.params.id });
+
+    // Write to Audit Log
+    await AuditLog.create({
+      user: req.user._id,
+      action: 'Delete Complaint',
+      module: 'Complaints',
+      description: `Deleted complaint ID: ${complaint.complaintId}, Tracking ID: ${complaint.trackingId}`,
+    }).catch(e => console.error('Failed to log audit:', e));
+
+    res.json({ success: true, message: 'Complaint deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaints,
@@ -408,4 +646,6 @@ module.exports = {
   getNearbyComplaints,
   updateComplaintStatus,
   checkDuplicates,
+  clarifyComplaint,
+  deleteOwnComplaint,
 };

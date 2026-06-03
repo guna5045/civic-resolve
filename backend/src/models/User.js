@@ -17,17 +17,34 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: [true, 'Mobile number is required'],
+      required: function() {
+        return this.authMethod === 'Local';
+      },
       trim: true,
     },
     passwordHash: {
       type: String,
-      required: [true, 'Password hash is required'],
+      required: function() {
+        return this.authMethod === 'Local';
+      },
     },
     role: {
       type: String,
       enum: ['Citizen', 'Department Officer', 'Admin'],
       default: 'Citizen',
+    },
+    googleId: {
+      type: String,
+      default: '',
+    },
+    authMethod: {
+      type: String,
+      enum: ['Local', 'Google', 'Demo'],
+      default: 'Local',
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
     },
     profilePhoto: {
       type: String,
@@ -37,6 +54,10 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Department',
       default: null, // Relevant for Department Officers
+    },
+    departmentName: {
+      type: String,
+      default: '',
     },
     points: {
       type: Number,
@@ -93,7 +114,15 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Hook to hash password before saving if it has been modified
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('passwordHash')) {
+  if (!this.passwordHash || !this.isModified('passwordHash')) {
+    return next();
+  }
+  // Skip hashing if it already has a bcrypt signature (like $2a$, $2b$, or $2y$)
+  if (
+    this.passwordHash.startsWith('$2a$') ||
+    this.passwordHash.startsWith('$2b$') ||
+    this.passwordHash.startsWith('$2y$')
+  ) {
     return next();
   }
   const salt = await bcrypt.genSalt(10);

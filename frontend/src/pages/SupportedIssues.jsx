@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import ComplaintCard from '../components/common/ComplaintCard';
 import EmptyState from '../components/common/EmptyState';
-import { Heart } from 'lucide-react';
+import { ThumbsUp } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
 
 const SupportedIssues = () => {
@@ -59,7 +59,7 @@ const SupportedIssues = () => {
         <EmptyState
           title={t('supported.emptyState')}
           description={t('supported.emptyStateDesc')}
-          icon={Heart}
+          icon={ThumbsUp}
           showAction={true}
           actionText={t('nav.nearbyIssues')}
           onActionClick={() => navigate('/citizen/nearby')}

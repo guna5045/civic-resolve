@@ -32,6 +32,10 @@ const badgeSchema = new mongoose.Schema(
       type: Number, // 0-11 for month, or custom code
       default: null,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

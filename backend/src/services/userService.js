@@ -18,14 +18,11 @@ const createUser = async (userData) => {
     throw new Error('User already exists');
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash(password, salt);
-
   return await User.create({
     fullName,
     email,
     mobile,
-    passwordHash,
+    passwordHash: password, // Pre-save hook in User model will hash this automatically exactly once
     role: role || 'Citizen',
     department: departmentId || null,
     points: 0,

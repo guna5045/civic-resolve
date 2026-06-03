@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
-import { AlertCircle, CheckCircle, RefreshCw, Trophy, Bell, Heart, PlusCircle, MapPin, Award } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, Trophy, Bell, ThumbsUp, PlusCircle, MapPin, Award } from 'lucide-react';
 import StatsCard from '../components/common/StatsCard';
 import ComplaintCard from '../components/common/ComplaintCard';
 import Button from '../components/common/Button';
@@ -70,7 +70,7 @@ const CitizenDashboard = () => {
         // Stats
         const raised = userComplaints.length;
         const resolved = userComplaints.filter(c => c.status === 'Resolved' || c.status === 'Closed').length;
-        const pending = userComplaints.filter(c => ['Submitted', 'Under Review', 'Assigned', 'In Progress'].includes(c.status)).length;
+        const pending = userComplaints.filter(c => !['Resolved', 'Closed', 'Rejected', 'Rejected By Officer'].includes(c.status)).length;
         setStats({ raised, supported, resolved, pending });
 
         // Compile Activity Feed
@@ -191,32 +191,36 @@ const CitizenDashboard = () => {
           value={stats.raised}
           icon={AlertCircle}
           colorClass="text-brand-400 bg-brand-500/10 border-brand-500/20"
+          onClick={() => navigate('/citizen/my-complaints')}
         />
         <StatsCard
           title={t('dashboard.issuesSupported')}
           value={stats.supported}
-          icon={Heart}
-          colorClass="text-rose-400 bg-rose-500/10 border-rose-500/20"
+          icon={ThumbsUp}
+          colorClass="text-brand-400 bg-brand-500/10 border-brand-500/20"
+          onClick={() => navigate('/citizen/supported')}
         />
         <StatsCard
           title={t('dashboard.resolved')}
           value={stats.resolved}
           icon={CheckCircle}
           colorClass="text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+          onClick={() => navigate('/citizen/my-complaints', { state: { filter: 'resolved' } })}
         />
         <StatsCard
           title={t('dashboard.pendingQueue')}
           value={stats.pending}
           icon={RefreshCw}
-          colorClass="text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+          colorClass="text-amber-400 bg-amber-500/10 border-amber-500/20"
+          onClick={() => navigate('/citizen/my-complaints', { state: { filter: 'pending' } })}
         />
       </div>
 
-      {/* 3. Main Grid layout: Quick actions, feed, notifications */}
+      {/* 3. Main layout: Quick actions and reports list */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Side: Recent Reports list */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-12 space-y-6">
           <div className="flex justify-between items-center">
             <h4 className="text-base font-bold text-slate-200">{t('dashboard.myReports')}</h4>
             <Link to="/citizen/my-complaints" className="text-xs text-brand-400 font-semibold hover:underline">
@@ -272,7 +276,7 @@ const CitizenDashboard = () => {
                   <h5 className="text-xs font-bold text-slate-200 mt-3 group-hover:text-emerald-400 transition-colors duration-300">{t('nav.nearbyIssues')}</h5>
                   <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{t('dashboard.nearbyDesc')}</p>
                 </div>
-                <span className="text-[10px] text-emerald-400 font-semibold mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
+                <span className="text-[10px] text-emerald-450 font-semibold mt-4 flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300">
                   {t('dashboard.exploreMap')} &rarr;
                 </span>
               </Link>
@@ -291,45 +295,6 @@ const CitizenDashboard = () => {
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Right Side: Activity Feed */}
-        <div className="lg:col-span-4 glass-panel rounded-2xl border border-slate-805 p-6 space-y-5">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block border-b border-slate-805 pb-2">
-            {t('dashboard.activityHistory')}
-          </span>
-
-          {loading ? (
-            <div className="py-6 flex justify-center">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-            </div>
-          ) : activityFeed.length === 0 ? (
-            <EmptyState
-              title={t('dashboard.noActivity')}
-              description={t('dashboard.noActivity')}
-              icon={RefreshCw}
-              className="py-6 border-none bg-transparent"
-            />
-          ) : (
-            <div className="space-y-4">
-              {activityFeed.map((act, index) => (
-                <div key={index} className="flex items-start gap-3 text-xs">
-                  <div className={`p-1.5 rounded bg-slate-950 border border-slate-850 ${
-                    act.type === 'Submit' ? 'text-blue-400' : act.type === 'Support' ? 'text-rose-400' : act.type === 'Resolve' ? 'text-emerald-400' : 'text-amber-400'
-                  }`}>
-                    {act.type === 'Submit' ? '➕' : act.type === 'Support' ? '❤️' : act.type === 'Resolve' ? '✓' : '🏆'}
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-slate-200 leading-normal">{act.title}</h5>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{act.description}</p>
-                    <span className="text-[9px] text-slate-500 block mt-1">
-                      {new Date(act.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

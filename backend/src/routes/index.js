@@ -11,6 +11,7 @@ const reportRoutes = require('./reportRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const supportRoutes = require('./supportRoutes');
 const auditLogRoutes = require('./auditLogRoutes');
+const aiRoutes = require('./aiRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/complaints', complaintRoutes);
@@ -22,5 +23,6 @@ router.use('/reports', reportRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/supports', supportRoutes);
 router.use('/audit-logs', auditLogRoutes);
+router.use('/ai', aiRoutes);
 
 module.exports = router;

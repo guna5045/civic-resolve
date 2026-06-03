@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { MessageSquare, Heart, Calendar, MapPin } from 'lucide-react';
+import { MessageSquare, ThumbsUp, Calendar, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getStatusBadgeColor, getPriorityBadgeColor, formatDate } from '../../utils/formatters';
 import { LanguageContext } from '../../context/LanguageContext';
@@ -57,14 +57,10 @@ const ComplaintCard = ({ complaint, onSupport, isSupported, userRole, proximityT
           {description}
         </p>
 
-        {/* 4-column Quick Stats Grid */}
-        <div className="grid grid-cols-4 gap-1 border-t border-b border-slate-800/40 py-3 my-4.5 text-center bg-slate-950/10 rounded-lg">
+        {/* 3-column Quick Stats Grid */}
+        <div className="grid grid-cols-3 gap-2 border-t border-b border-slate-800/40 py-3 my-4.5 text-center bg-slate-950/10 rounded-lg">
           <div className="flex flex-col items-center">
-            <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{t('card.distance') || 'Distance'}</span>
-            <span className="text-[11px] text-slate-350 font-medium mt-0.5">{proximityText || 'N/A'}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">{t('card.supporters') || 'Supporters'}</span>
+            <span className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Community Support</span>
             <span className="text-[11px] text-slate-350 font-medium mt-0.5">{supportCount || 0}</span>
           </div>
           <div className="flex flex-col items-center">
@@ -108,11 +104,11 @@ const ComplaintCard = ({ complaint, onSupport, isSupported, userRole, proximityT
                 disabled={isSupported}
                 className={`px-3 py-1 rounded text-xs font-semibold border flex items-center gap-1 transition-all ${
                   isSupported
-                    ? 'border-rose-500/30 bg-rose-500/5 text-rose-400 cursor-default'
-                    : 'border-slate-700 hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-450'
+                    ? 'border-brand-500/30 bg-brand-500/5 text-brand-405 cursor-default'
+                    : 'border-slate-700 hover:border-brand-500/50 hover:bg-brand-500/10 hover:text-brand-400'
                 }`}
               >
-                <Heart className="h-3 w-3" />
+                <ThumbsUp className="h-3 w-3" />
                 {isSupported ? t('nearby.supported') : t('nearby.support')}
               </button>
             )

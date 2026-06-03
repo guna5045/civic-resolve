@@ -8,6 +8,7 @@ const {
   updateIssueStatus,
   uploadResolution,
   getOfficerReports,
+  getOfficerAnalytics,
 } = require('../controllers/officerController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorize } = require('../middleware/roleMiddleware');
@@ -18,6 +19,7 @@ router.use(authorize('Admin', 'Department Officer'));
 
 router.get('/dashboard', getOfficerDashboard);
 router.get('/issues', getOfficerIssues);
+router.get('/analytics', getOfficerAnalytics);
 router.put('/update-status', updateIssueStatus);
 router.post('/upload-resolution', upload.array('resolutionImages', 5), uploadResolution);
 router.get('/reports', getOfficerReports);

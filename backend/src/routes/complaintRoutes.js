@@ -7,6 +7,8 @@ const {
   getNearbyComplaints,
   updateComplaintStatus,
   checkDuplicates,
+  clarifyComplaint,
+  deleteOwnComplaint,
 } = require('../controllers/complaintController');
 const { supportComplaint, checkSupport } = require('../controllers/supportController');
 const { protect } = require('../middleware/authMiddleware');
@@ -44,6 +46,8 @@ router.post('/', protect, authorize('Citizen'), upload.array('images', 5), creat
 router.post('/create', protect, authorize('Citizen'), upload.array('images', 5), createComplaint);
 router.post('/:id/support', protect, authorize('Citizen'), supportComplaint);
 router.get('/:id/supported', protect, checkSupport);
+router.put('/:id/clarify', protect, authorize('Citizen'), upload.array('images', 5), clarifyComplaint);
+router.delete('/:id', protect, authorize('Citizen'), deleteOwnComplaint);
 
 // Officer/Admin actions
 router.patch(

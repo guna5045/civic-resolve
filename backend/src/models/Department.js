@@ -23,6 +23,19 @@ const departmentSchema = new mongoose.Schema(
       enum: ['Active', 'Inactive'],
       default: 'Active',
     },
+    category: {
+      type: String,
+      enum: ['Roads', 'Water Supply', 'Electricity', 'Sanitation', 'Public Safety', 'Other'],
+      default: 'Other',
+    },
+    color: {
+      type: String,
+      default: '#3b82f6',
+    },
+    icon: {
+      type: String,
+      default: 'Layers',
+    },
   },
   {
     timestamps: true,

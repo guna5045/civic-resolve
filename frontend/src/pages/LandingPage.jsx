@@ -2,6 +2,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES } from '../constants/roles';
+import api from '../services/api';
 import {
   ShieldAlert,
   Users,
@@ -28,8 +29,21 @@ import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { AccessibilityContext } from '../context/AccessibilityContext';
 
+const DEFAULT_DEPARTMENTS = [
+  { name: 'Roads Department' },
+  { name: 'Electricity Department' },
+  { name: 'Water Supply Department' },
+  { name: 'Sanitation Department' },
+  { name: 'Drainage & Sewerage Department' },
+  { name: 'Street Lighting Department' },
+  { name: 'Traffic & Signals Department' },
+  { name: 'Public Health Department' },
+  { name: 'Parks & Greenery Department' },
+  { name: 'Building & Encroachment Department' },
+];
+
 const LandingPage = () => {
-  const { login, register, error: authError, demoLogin } = useAuth();
+  const { login, register, verifyOtp, resendOtp, loginWithGoogle, error: authError, demoLogin } = useAuth();
   const navigate = useNavigate();
 
   // Context hook loaders
@@ -43,17 +57,113 @@ const LandingPage = () => {
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
 
+  // OTP State variables
+  const [isOtpMode, setIsOtpMode] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpTimer, setOtpTimer] = useState(0);
+
+  // OTP Countdown timer hook
+  useEffect(() => {
+    let interval = null;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [otpTimer]);
+
+  // Google SSO initialization hook
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    const initGoogle = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            setLoading(true);
+            setValidationError('');
+            loginWithGoogle(response.credential)
+              .then(() => navigate('/citizen'))
+              .catch((err) => {
+                const errorMsg = err.response?.data?.message || err.message || 'Google Sign-In failed.';
+                setValidationError(errorMsg);
+              })
+              .finally(() => setLoading(false));
+          },
+        });
+
+        // Render standard Google Sign-In button
+        const container = document.getElementById('google-signin-btn-container');
+        if (container) {
+          window.google.accounts.id.renderButton(container, {
+            theme: 'filled_black', // matches our dark premium theme
+            size: 'large',
+            width: container.offsetWidth || 342,
+            shape: 'rectangular',
+            text: 'continue_with',
+          });
+        }
+      }
+    };
+
+    const loadGoogleScript = () => {
+      if (window.google?.accounts?.id) {
+        initGoogle();
+        return;
+      }
+
+      // Check if script is already in the document
+      let script = document.getElementById('google-gsi-client-script');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'google-gsi-client-script';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = initGoogle;
+        script.onerror = () => {
+          console.error('Google SSO script failed to load.');
+          setValidationError('Google Sign-In script failed to load. Please verify your internet connection.');
+        };
+        document.body.appendChild(script);
+      } else {
+        script.onload = initGoogle;
+      }
+    };
+
+    // Small delay to ensure DOM element '#google-signin-btn-container' is rendered first
+    const timer = setTimeout(loadGoogleScript, 100);
+    return () => clearTimeout(timer);
+  }, [selectedRole]);
+
   // Dropdown visibility states
   const [showHeaderLangDropdown, setShowHeaderLangDropdown] = useState(false);
+  const [showDeptDropdown, setShowDeptDropdown] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Refs for click outside handling
   const headerLangRef = useRef(null);
+  const deptDropdownRef = useRef(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [departments, setDepartments] = useState(() =>
+    DEFAULT_DEPARTMENTS.map((d, index) => ({
+      _id: `default-${index}`,
+      name: d.name,
+      status: 'Active',
+      isDefaultFallback: true
+    }))
+  );
+  const [selectedDeptId, setSelectedDeptId] = useState('');
 
   const languages = [
     { code: 'en', name: 'English' },
@@ -64,21 +174,61 @@ const LandingPage = () => {
     { code: 'ml', name: 'മലയാളം' }
   ];
 
+  // Load departments list for officer login
+  useEffect(() => {
+    const fetchDepts = async () => {
+      try {
+        const res = await api.get('/departments');
+        if (res.data.success) {
+          const activeDepts = res.data.data.filter(d => d.status !== 'Inactive');
+          setDepartments(activeDepts);
+
+          // Resolve selected department to database ID if it was set to a default fallback ID
+          setSelectedDeptId((prevId) => {
+            if (!prevId) return prevId;
+            const currentSelectedFallback = DEFAULT_DEPARTMENTS.map((d, index) => ({
+              _id: `default-${index}`,
+              name: d.name,
+            })).find(d => d._id === prevId);
+
+            if (currentSelectedFallback) {
+              const matchedRealDept = activeDepts.find(d => d.name === currentSelectedFallback.name);
+              if (matchedRealDept) {
+                return matchedRealDept._id;
+              }
+            }
+            return prevId;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching departments for login selector:', err);
+      }
+    };
+    fetchDepts();
+  }, []);
+
   // Close dropdown on click outside, Esc key, focus loss
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (headerLangRef.current && !headerLangRef.current.contains(e.target)) {
         setShowHeaderLangDropdown(false);
       }
+      if (deptDropdownRef.current && !deptDropdownRef.current.contains(e.target)) {
+        setShowDeptDropdown(false);
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setShowHeaderLangDropdown(false);
+        setShowDeptDropdown(false);
       }
     };
     const handleFocusOutline = (e) => {
       if (headerLangRef.current && !headerLangRef.current.contains(e.target)) {
         setShowHeaderLangDropdown(false);
+      }
+      if (deptDropdownRef.current && !deptDropdownRef.current.contains(e.target)) {
+        setShowDeptDropdown(false);
       }
     };
 
@@ -100,20 +250,64 @@ const LandingPage = () => {
 
     try {
       if (isRegisterMode && selectedRole === ROLES.CITIZEN) {
-        if (!fullName || !email || !mobile || !password) {
+        if (!fullName || !email || !mobile || !password || !confirmPassword) {
           setValidationError(t('validation.allRequired') || 'All fields are required for registration.');
           setLoading(false);
           return;
         }
-        await register(fullName, email, mobile, password);
-        navigate('/citizen');
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          setValidationError('Please enter a valid email address.');
+          setLoading(false);
+          return;
+        }
+
+        // Mobile format validation (simple numeric and length check)
+        const mobileRegex = /^\d{10}$/;
+        if (!mobileRegex.test(mobile)) {
+          setValidationError('Please enter a valid 10-digit mobile number.');
+          setLoading(false);
+          return;
+        }
+
+        // Strong password check: min 8, uppercase, lowercase, number
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+          setValidationError('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.');
+          setLoading(false);
+          return;
+        }
+
+        // Password confirmation matches
+        if (password !== confirmPassword) {
+          setValidationError('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
+
+        const res = await register(fullName, email, mobile, password);
+        if (res && res.success) {
+          setOtpEmail(email);
+          setIsOtpMode(true);
+          setOtpTimer(60);
+          setOtpCode('');
+        } else {
+          setValidationError(res?.message || 'Registration failed.');
+        }
       } else {
         if (!email || !password) {
           setValidationError(t('validation.enterCredentials') || 'Please enter both email and password.');
           setLoading(false);
           return;
         }
-        const user = await login(email, password, selectedRole);
+        if (selectedRole === ROLES.OFFICER && !selectedDeptId) {
+          setValidationError('Please select your department.');
+          setLoading(false);
+          return;
+        }
+        const user = await login(email, password, selectedRole, selectedRole === ROLES.OFFICER ? selectedDeptId : undefined);
         
         // Redirect based on role
         if (user.role === ROLES.ADMIN) {
@@ -125,31 +319,50 @@ const LandingPage = () => {
         }
       }
     } catch (err) {
+      setValidationError(err.message || 'Login failed. Please check credentials.');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemoLogin = async () => {
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
     setValidationError('');
     setLoading(true);
     try {
-      const user = await demoLogin(selectedRole);
-      // Redirect based on role
-      if (user.role === ROLES.ADMIN) {
-        navigate('/admin');
-      } else if (user.role === ROLES.OFFICER) {
-        navigate('/officer');
-      } else {
-        navigate('/citizen');
+      if (!otpCode || otpCode.trim().length !== 6) {
+        setValidationError('Please enter a valid 6-digit OTP code.');
+        setLoading(false);
+        return;
       }
+      await verifyOtp(otpEmail, otpCode.trim());
+      navigate('/citizen');
     } catch (err) {
-      setValidationError(t('validation.demoFailed') || 'Demo access failed. Please try again.');
+      setValidationError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleOtpResend = async () => {
+    setValidationError('');
+    setLoading(true);
+    try {
+      const res = await resendOtp(otpEmail);
+      if (res && res.success) {
+        setOtpTimer(60);
+        setValidationError('');
+      } else {
+        setValidationError(res?.message || 'Failed to resend OTP.');
+      }
+    } catch (err) {
+      setValidationError(err.message || 'Failed to resend OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // Icon maps for features
   const citizenIcons = [MapPin, Users, History, Award, Map];
@@ -322,140 +535,288 @@ const LandingPage = () => {
           <div id="login-section" className="lg:col-span-5 scroll-mt-24">
             <div className="glass-panel rounded-2xl border border-slate-800 shadow-2xl p-6 md:p-8">
               
-              {/* Header with Portal Access title */}
-              <div className="pb-4 border-b border-slate-800/80 mb-5">
-                <h3 className="text-lg font-bold text-slate-100">{t('nav.portalAccess')}</h3>
-                <p className="text-[10px] text-slate-500 mt-0.5">{t('nav.selectProfile')}</p>
-              </div>
+              {isOtpMode ? (
+                <div className="space-y-5">
+                  <div className="pb-4 border-b border-slate-800/80 mb-5 text-center">
+                    <div className="h-12 w-12 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 flex items-center justify-center mx-auto mb-3">
+                      <ShieldCheck className="h-6 w-6 animate-pulse" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-100">Verify Your Email</h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      We sent a 6-digit OTP code to <span className="text-slate-200 font-semibold">{otpEmail}</span>. Enter it to activate your account.
+                    </p>
+                  </div>
 
-              {/* Synchronized Role Toggles */}
-              <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-950 border border-slate-900 mb-5">
-                {[ROLES.CITIZEN, ROLES.OFFICER, ROLES.ADMIN].map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole(role);
-                      setIsRegisterMode(false);
-                      setValidationError('');
-                    }}
-                    className={`py-2 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all ${
-                      selectedRole === role
-                        ? 'bg-brand-600 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {role === ROLES.CITIZEN 
-                      ? t('auth.citizen') 
-                      : role === ROLES.OFFICER 
-                      ? t('auth.officer') 
-                      : t('auth.admin')}
-                  </button>
-                ))}
-              </div>
-
-              {/* Error messages */}
-              {(authError || validationError) && (
-                <div className="mb-4 rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400 font-medium">
-                  {validationError || authError}
-                </div>
-              )}
-
-              {/* Form panel */}
-              <form onSubmit={handleAuthSubmit} className="space-y-4">
-                {isRegisterMode && selectedRole === ROLES.CITIZEN && (
-                  <Input
-                    label={t('auth.fullName')}
-                    name="name"
-                    placeholder={t('auth.fullNamePlaceholder')}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
-                )}
-
-                <Input
-                  label={
-                    selectedRole === ROLES.CITIZEN
-                      ? t('auth.email')
-                      : selectedRole === ROLES.OFFICER
-                      ? t('auth.officerEmail')
-                      : t('auth.adminEmail')
-                  }
-                  name="email"
-                  type="email"
-                  placeholder={
-                    selectedRole === ROLES.CITIZEN ? t('auth.emailPlaceholder') : 'officer@civicresolve.gov'
-                  }
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-
-                {isRegisterMode && selectedRole === ROLES.CITIZEN && (
-                  <Input
-                    label={t('auth.mobile')}
-                    name="mobile"
-                    type="tel"
-                    placeholder={t('auth.mobilePlaceholder')}
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    required
-                  />
-                )}
-
-                <Input
-                  label={t('auth.password')}
-                  name="password"
-                  type="password"
-                  placeholder={t('auth.passwordPlaceholder')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-
-                <Button type="submit" loading={loading} className="w-full mt-2">
-                  {isRegisterMode ? t('auth.register') : t('auth.signIn')}
-                </Button>
-                
-                {/* Demo Sign In Button */}
-                {!isRegisterMode && (
-                  <button
-                    type="button"
-                    onClick={handleDemoLogin}
-                    disabled={loading}
-                    className="w-full mt-2 py-2.5 text-xs font-bold rounded-lg border border-brand-500/30 bg-brand-500/5 hover:bg-brand-500/10 text-brand-400 transition-all active:scale-95 text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" /> {t('auth.demoAccess')}
-                  </button>
-                )}
-              </form>
-
-              {/* Mode Toggle Footer */}
-              {selectedRole === ROLES.CITIZEN && (
-                <div className="mt-4 pt-4 border-t border-slate-800/60 text-center text-xs text-slate-500">
-                  {isRegisterMode ? (
-                    <>
-                      {t('auth.alreadyHaveAccount')}{' '}
-                      <button
-                        onClick={() => setIsRegisterMode(false)}
-                        className="text-brand-400 hover:underline font-semibold"
-                      >
-                        {t('auth.loginHere')}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {t('auth.firstTime')}{' '}
-                      <button
-                        onClick={() => setIsRegisterMode(true)}
-                        className="text-brand-400 hover:underline font-semibold"
-                      >
-                        {t('auth.registerHere')}
-                      </button>
-                    </>
+                  {validationError && (
+                    <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400 font-medium">
+                      {validationError}
+                    </div>
                   )}
+
+                  <form onSubmit={handleOtpVerify} className="space-y-4">
+                    <Input
+                      label="One-Time Password (OTP)"
+                      name="otp"
+                      type="text"
+                      maxLength={6}
+                      placeholder="e.g. 123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      required
+                      className="text-center tracking-[0.25em] text-lg font-bold"
+                    />
+
+                    <Button type="submit" loading={loading} className="w-full">
+                      Verify & Register
+                    </Button>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/60 mt-4">
+                      <button
+                        type="button"
+                        onClick={handleOtpResend}
+                        disabled={otpTimer > 0 || loading}
+                        className={`font-semibold transition-colors ${
+                          otpTimer > 0
+                            ? 'text-slate-500 cursor-not-allowed'
+                            : 'text-brand-400 hover:text-brand-300 hover:underline'
+                        }`}
+                      >
+                        {otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend Code'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOtpMode(false);
+                          setValidationError('');
+                        }}
+                        className="text-slate-400 hover:text-slate-350 hover:underline font-semibold"
+                      >
+                        Edit Details
+                      </button>
+                    </div>
+                  </form>
                 </div>
+              ) : (
+                <>
+                  {/* Header with Portal Access title */}
+                  <div className="pb-4 border-b border-slate-800/80 mb-5">
+                    <h3 className="text-lg font-bold text-slate-100">{t('nav.portalAccess')}</h3>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{t('nav.selectProfile')}</p>
+                  </div>
+
+                  {/* Synchronized Role Toggles */}
+                  <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-950 border border-slate-900 mb-5">
+                    {[ROLES.CITIZEN, ROLES.OFFICER, ROLES.ADMIN].map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole(role);
+                          setIsRegisterMode(false);
+                          setValidationError('');
+                          setConfirmPassword('');
+                        }}
+                        className={`py-2 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all ${
+                          selectedRole === role
+                            ? 'bg-brand-600 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        {role === ROLES.CITIZEN 
+                          ? t('auth.citizen') 
+                          : role === ROLES.OFFICER 
+                          ? t('auth.officer') 
+                          : t('auth.admin')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Error messages */}
+                  {(authError || validationError) && (
+                    <div className="mb-4 rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-xs text-rose-400 font-medium">
+                      {validationError || authError}
+                    </div>
+                  )}
+
+                  {/* Form panel */}
+                  <form onSubmit={handleAuthSubmit} className="space-y-4">
+                    {isRegisterMode && selectedRole === ROLES.CITIZEN && (
+                      <Input
+                        label={t('auth.fullName')}
+                        name="name"
+                        placeholder={t('auth.fullNamePlaceholder')}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                      />
+                    )}
+
+                    {selectedRole === ROLES.OFFICER && (
+                      <div className="flex flex-col gap-1.5 w-full relative" ref={deptDropdownRef}>
+                        <label className="text-xs font-semibold text-slate-350 uppercase tracking-wider">
+                          Department <span className="text-rose-450">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeptDropdown(!showDeptDropdown)}
+                          className="w-full rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500 text-left flex justify-between items-center"
+                        >
+                          <span className="truncate">
+                            {selectedDeptId
+                              ? departments.find((d) => d._id === selectedDeptId)?.name || 'Select Department'
+                              : 'Select Department'}
+                          </span>
+                          <span className="text-slate-500 text-xs">▼</span>
+                        </button>
+                        {showDeptDropdown && (
+                          <div className="absolute z-50 left-0 right-0 top-[68px] rounded-xl border border-slate-800 bg-slate-900 shadow-2xl p-2.5 space-y-2 max-h-60 overflow-hidden flex flex-col">
+                            <input
+                              type="text"
+                              placeholder="Search department..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-200 outline-none focus:border-brand-500 placeholder-slate-500"
+                            />
+                            <div className="overflow-y-auto flex-1 divide-y divide-slate-800/40">
+                              {departments
+                                .filter((d) => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                .map((d) => (
+                                  <button
+                                    key={d._id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedDeptId(d._id);
+                                      setShowDeptDropdown(false);
+                                      setSearchTerm('');
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs transition-colors rounded-md ${
+                                      selectedDeptId === d._id
+                                        ? 'bg-brand-650 text-white font-semibold'
+                                        : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                                    }`}
+                                  >
+                                    {d.name}
+                                  </button>
+                                ))}
+                              {departments.filter((d) => d.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                <div className="text-center py-4 text-xs text-slate-500">No departments found</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Input
+                      label={
+                        selectedRole === ROLES.CITIZEN
+                          ? t('auth.email')
+                          : selectedRole === ROLES.OFFICER
+                          ? t('auth.officerEmail')
+                          : t('auth.adminEmail')
+                      }
+                      name="email"
+                      type="email"
+                      placeholder={
+                        selectedRole === ROLES.CITIZEN ? t('auth.emailPlaceholder') : 'officer@civicresolve.gov'
+                      }
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+
+                    {isRegisterMode && selectedRole === ROLES.CITIZEN && (
+                      <Input
+                        label={t('auth.mobile')}
+                        name="mobile"
+                        type="tel"
+                        placeholder={t('auth.mobilePlaceholder')}
+                        value={mobile}
+                        onChange={(e) => setMobile(e.target.value)}
+                        required
+                      />
+                    )}
+
+                    <Input
+                      label={t('auth.password')}
+                      name="password"
+                      type="password"
+                      placeholder={t('auth.passwordPlaceholder')}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+
+                    {isRegisterMode && selectedRole === ROLES.CITIZEN && (
+                      <Input
+                        label="Confirm Password"
+                        name="confirmPassword"
+                        type="password"
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                    )}
+
+                    <Button type="submit" loading={loading} className="w-full mt-2">
+                      {isRegisterMode ? t('auth.register') : t('auth.signIn')}
+                    </Button>
+                    
+                    {/* Google SSO Options */}
+                    {selectedRole === ROLES.CITIZEN && (
+                      <>
+                        <div className="relative my-4">
+                          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                            <div className="w-full border-t border-slate-800"></div>
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-slate-950 px-2 text-slate-505">Or continue with</span>
+                          </div>
+                        </div>
+
+                        {/* Standard Google Sign-In Button Container */}
+                        <div id="google-signin-btn-container" className="w-full flex justify-center mt-2 z-10"></div>
+                      </>
+                    )}
+                  </form>
+
+                  {/* Mode Toggle Footer */}
+                  {selectedRole === ROLES.CITIZEN && (
+                    <div className="mt-4 pt-4 border-t border-slate-800/60 text-center text-xs text-slate-500">
+                      {isRegisterMode ? (
+                        <>
+                          {t('auth.alreadyHaveAccount')}{' '}
+                          <button
+                            onClick={() => {
+                              setIsRegisterMode(false);
+                              setValidationError('');
+                              setConfirmPassword('');
+                            }}
+                            className="text-brand-400 hover:underline font-semibold"
+                          >
+                            {t('auth.loginHere')}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {t('auth.firstTime')}{' '}
+                          <button
+                            onClick={() => {
+                              setIsRegisterMode(true);
+                              setValidationError('');
+                              setConfirmPassword('');
+                            }}
+                            className="text-brand-400 hover:underline font-semibold"
+                          >
+                            {t('auth.registerHere')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

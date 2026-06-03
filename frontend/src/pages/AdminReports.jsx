@@ -46,6 +46,20 @@ const AdminReports = () => {
       fetchReportsHistory();
     } catch (err) {
       console.error('Excel export failed:', err);
+      if (err.response && err.response.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errorObj = JSON.parse(reader.result);
+            alert(errorObj.message || 'Export failed.');
+          } catch (e) {
+            alert('Export failed.');
+          }
+        };
+        reader.readAsText(err.response.data);
+      } else {
+        alert(err.response?.data?.message || 'Export failed.');
+      }
     } finally {
       setDownloading(false);
     }

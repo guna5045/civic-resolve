@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../utils/mapSetup';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import { FileUp, MapPin, Sparkles, Info, Compass, AlertCircle } from 'lucide-react';
+import { FileUp, MapPin, Sparkles, Info, Compass, AlertCircle, X } from 'lucide-react';
 import api from '../services/api';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
@@ -41,7 +42,6 @@ const ReportIssue = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Roads');
-  const [priority, setPriority] = useState('Medium');
   const [selectedDeptId, setSelectedDeptId] = useState('');
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -69,6 +69,9 @@ const ReportIssue = () => {
   // Duplicate states
   const [duplicateCheckData, setDuplicateCheckData] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     // Load departments
@@ -141,15 +144,7 @@ const ReportIssue = () => {
       const query = val.toLowerCase().trim();
       const filtered = PREDEFINED_ISSUES.filter((issue) => {
         const titleLower = issue.title.toLowerCase();
-        const categoryLower = issue.category.toLowerCase();
-        const translatedCategory = (t(`categories.${issue.category}`) || '').toLowerCase();
-
-        const matchesTitle = titleLower.includes(query);
-        const matchesCategory = categoryLower.includes(query);
-        const matchesTranslatedCategory = translatedCategory.includes(query);
-        const matchesWordStart = titleLower.split(/\s+/).some(word => word.startsWith(query));
-
-        return matchesTitle || matchesCategory || matchesTranslatedCategory || matchesWordStart;
+        return titleLower.split(/\s+/).some(word => word.startsWith(query));
       });
       setFilteredSuggestions(filtered);
       setShowSuggestions(true);
@@ -221,7 +216,7 @@ const ReportIssue = () => {
     }
   }, [category, departments]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
     
@@ -230,7 +225,18 @@ const ReportIssue = () => {
       return;
     }
 
+    if (images.length === 0) {
+      setError('Please upload at least one image as evidence before submitting a complaint.');
+      return;
+    }
+
+    setShowReviewModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowReviewModal(false);
     setLoading(true);
+    setError('');
 
     try {
       const dupRes = await api.post('/complaints/check-duplicates', {
@@ -275,7 +281,6 @@ const ReportIssue = () => {
       formData.append('title', title);
       formData.append('description', description);
       formData.append('category', category);
-      formData.append('priority', priority);
       formData.append('latitude', position[0]);
       formData.append('longitude', position[1]);
       formData.append('departmentId', deptIdToSubmit);
@@ -364,15 +369,7 @@ const ReportIssue = () => {
                   const query = title.toLowerCase().trim();
                   const filtered = PREDEFINED_ISSUES.filter((issue) => {
                     const titleLower = issue.title.toLowerCase();
-                    const categoryLower = issue.category.toLowerCase();
-                    const translatedCategory = (t(`categories.${issue.category}`) || '').toLowerCase();
-
-                    const matchesTitle = titleLower.includes(query);
-                    const matchesCategory = categoryLower.includes(query);
-                    const matchesTranslatedCategory = translatedCategory.includes(query);
-                    const matchesWordStart = titleLower.split(/\s+/).some(word => word.startsWith(query));
-
-                    return matchesTitle || matchesCategory || matchesTranslatedCategory || matchesWordStart;
+                    return titleLower.split(/\s+/).some(word => word.startsWith(query));
                   });
                   setFilteredSuggestions(filtered);
                   setShowSuggestions(true);
@@ -422,32 +419,17 @@ const ReportIssue = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('report.category')}</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-brand-500 focus:ring-1"
-              >
-                {['Roads', 'Water Supply', 'Electricity', 'Sanitation', 'Public Safety', 'Other'].map((cat) => (
-                  <option key={cat} value={cat} className="bg-slate-900 text-slate-200">{t(`categories.${cat}`) || cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('report.priority')}</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-brand-500 focus:ring-1"
-              >
-                {['Low', 'Medium', 'High', 'Critical'].map((pri) => (
-                  <option key={pri} value={pri} className="bg-slate-900 text-slate-200">{t(`priorities.${pri}`) || pri}</option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{t('report.category')}</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-brand-500 focus:ring-1"
+            >
+              {['Roads', 'Water Supply', 'Electricity', 'Sanitation', 'Public Safety', 'Other'].map((cat) => (
+                <option key={cat} value={cat} className="bg-slate-900 text-slate-200">{t(`categories.${cat}`) || cat}</option>
+              ))}
+            </select>
           </div>
 
           {/* Image Upload */}
@@ -603,6 +585,110 @@ const ReportIssue = () => {
                 className="w-full sm:w-auto px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-750 text-slate-250 border border-slate-700/60 rounded-lg transition-all cursor-pointer text-center"
               >
                 Submit New Complaint Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6 overflow-y-auto max-h-[90vh] animate-scale-in">
+            <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-brand-400" />
+                Review Complaint Information
+              </h3>
+              <button 
+                onClick={() => setShowReviewModal(false)}
+                className="text-slate-400 hover:text-slate-205 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Summary Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider">Issue Title</span>
+                  <span className="text-slate-200 text-sm font-bold block mt-1">{title}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider">Category</span>
+                  <span className="text-slate-200 font-semibold bg-brand-500/10 px-2.5 py-0.5 rounded border border-brand-500/20 w-fit block mt-1">
+                    {t(`categories.${category}`) || category}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider">Description</span>
+                  <p className="text-slate-350 leading-relaxed bg-slate-950/40 p-3 rounded-lg border border-slate-850 mt-1 whitespace-pre-wrap">{description}</p>
+                </div>
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider">Location Coordinates</span>
+                  <span className="text-slate-350 font-mono block mt-1">Lat: {position[0].toFixed(5)}, Lng: {position[1].toFixed(5)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4 flex flex-col">
+                <div>
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider mb-1">Uploaded Evidence</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {imagePreviews.map((src, i) => (
+                      <div key={i} className="aspect-square rounded-lg border border-slate-850 overflow-hidden bg-slate-950">
+                        <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-[160px] flex flex-col">
+                  <span className="text-slate-500 block uppercase text-[9px] font-bold tracking-wider mb-1">Selected Location Preview</span>
+                  <div className="flex-1 rounded-xl overflow-hidden border border-slate-800 relative z-10 min-h-[160px]">
+                    <MapContainer
+                      center={position}
+                      zoom={15}
+                      style={{ height: '100%', width: '100%', minHeight: '160px' }}
+                      zoomControl={false}
+                      dragging={false}
+                      doubleClickZoom={false}
+                      scrollWheelZoom={false}
+                    >
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      />
+                      <Marker position={position} />
+                    </MapContainer>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Information Notice */}
+            <div className="flex gap-3.5 items-start bg-blue-500/5 border border-blue-500/25 p-4 rounded-xl text-blue-400 text-xs leading-relaxed">
+              <Info className="h-5.5 w-5.5 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold uppercase tracking-wider block mb-0.5">Important Notice</span>
+                You may edit or delete this complaint until it enters administrative review. Once the complaint has been reviewed, assigned, verified, resolved, or closed, deletion will no longer be permitted. Please verify all details before submitting.
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row justify-end items-center gap-3.5 border-t border-slate-850 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="w-full sm:w-auto px-4.5 py-2 text-xs font-bold text-slate-400 hover:text-slate-205 transition-colors cursor-pointer text-center"
+              >
+                Back To Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold bg-brand-500 hover:bg-brand-400 text-slate-950 rounded-lg transition-all cursor-pointer text-center shadow-md shadow-brand-500/10"
+              >
+                Confirm & Submit Complaint
               </button>
             </div>
           </div>

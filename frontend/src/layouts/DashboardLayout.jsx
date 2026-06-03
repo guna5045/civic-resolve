@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Navbar from '../components/Navbar';
@@ -50,7 +50,18 @@ const DashboardLayout = ({ allowedRoles }) => {
 
         {/* Content Body */}
         <main className="flex-1 overflow-y-auto bg-slate-950 p-6 lg:p-8">
-          <Outlet />
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center py-20">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
+                  <span className="text-xs text-slate-500 font-medium animate-pulse">Loading panel...</span>
+                </div>
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

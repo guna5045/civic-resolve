@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import '../utils/mapSetup';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import api from '../services/api';
@@ -89,10 +90,12 @@ const PublicMap = () => {
       try {
         const res = await api.get('/complaints');
         if (res.data.success) {
-          setComplaints(res.data.data);
+          const allowedStatuses = ['Submitted', 'Under Review', 'Assigned', 'Verified', 'Verified By Officer', 'Work Started', 'Resolved'];
+          const filtered = res.data.data.filter(c => allowedStatuses.includes(c.status));
+          setComplaints(filtered);
           // Set map center to first complaint coordinates if present
-          if (res.data.data.length > 0) {
-            setMapCenter([res.data.data[0].latitude, res.data.data[0].longitude]);
+          if (filtered.length > 0) {
+            setMapCenter([filtered[0].latitude, filtered[0].longitude]);
           }
         }
       } catch (err) {
@@ -137,22 +140,18 @@ const PublicMap = () => {
           </span>
 
           {/* Quick Metrics Stats Block */}
-          <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-slate-950/40 border border-slate-850 text-center">
+          <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-slate-950/40 border border-slate-850 text-center">
             <div>
               <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-semibold">{t('map.active')}</span>
               <span className="text-xs font-bold text-amber-500">
-                {complaints.filter((c) => ['Submitted', 'Under Review', 'Assigned', 'In Progress'].includes(c.status)).length}
+                {complaints.filter((c) => ['Submitted', 'Under Review', 'Assigned', 'Verified', 'Verified By Officer', 'Work Started'].includes(c.status)).length}
               </span>
             </div>
-            <div className="border-x border-slate-900">
+            <div className="border-l border-slate-900">
               <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-semibold">{t('map.resolved')}</span>
               <span className="text-xs font-bold text-emerald-450">
-                {complaints.filter((c) => ['Resolved', 'Closed'].includes(c.status)).length}
+                {complaints.filter((c) => ['Resolved'].includes(c.status)).length}
               </span>
-            </div>
-            <div>
-              <span className="text-[8px] text-slate-500 uppercase tracking-wider block font-semibold">{t('map.slaRate')}</span>
-              <span className="text-xs font-bold text-brand-405">92.4%</span>
             </div>
           </div>
 

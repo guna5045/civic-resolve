@@ -93,9 +93,20 @@ const Profile = () => {
             </div>
 
             <div className="border-t border-slate-800/40 pt-5 space-y-3 text-xs text-slate-400">
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-slate-500" />
-                <span className="text-slate-200">{user?.email}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-slate-500" />
+                  <span className="text-slate-200">{user?.email}</span>
+                </div>
+                {user?.emailVerified ? (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-450 border border-emerald-500/20">
+                    Verified
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-450 border border-amber-500/20">
+                    Unverified
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-slate-500" />
@@ -107,6 +118,22 @@ const Profile = () => {
                   <span className="text-slate-200">{user?.department?.name}</span>
                 </div>
               )}
+
+              {/* Security & Authentication Details */}
+              <div className="border-t border-slate-800/40 pt-3 mt-3 space-y-2">
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-slate-500 uppercase tracking-wider font-semibold">Auth Method</span>
+                  <span className="text-slate-300 font-bold px-2 py-0.5 rounded bg-slate-950 border border-slate-850">
+                    {user?.authMethod || 'Local'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-slate-500 uppercase tracking-wider font-semibold">Member Since</span>
+                  <span className="text-slate-300 font-medium">
+                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Citizen Stats Card */}

@@ -60,8 +60,8 @@ const resolutionProcessing = async (complaintId, notes, images) => {
 const performanceTracking = async (officerId) => {
   const total = await Complaint.countDocuments({ assignedOfficer: officerId });
   const resolved = await Complaint.countDocuments({ assignedOfficer: officerId, status: { $in: ['Resolved', 'Closed'] } });
-  const pending = await Complaint.countDocuments({ assignedOfficer: officerId, status: { $in: ['Assigned', 'In Progress'] } });
-  const escalated = await Complaint.countDocuments({ assignedOfficer: officerId, status: 'Escalated' });
+  const pending = await Complaint.countDocuments({ assignedOfficer: officerId, status: { $in: ['Assigned', 'Verified', 'Verified By Officer', 'Work Started'] } });
+  const escalated = 0;
 
   return {
     total,

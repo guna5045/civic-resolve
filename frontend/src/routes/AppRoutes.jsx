@@ -1,43 +1,45 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 // Layout & core shells
 import DashboardLayout from '../layouts/DashboardLayout';
 
-// Public pages
+// Public pages - Keep statically loaded for instantaneous initial paints
 import LandingPage from '../pages/LandingPage';
 
 // Shared Pages
-import Profile from '../pages/Profile';
-import Notifications from '../pages/Notifications';
+const Profile = lazy(() => import('../pages/Profile'));
+const Notifications = lazy(() => import('../pages/Notifications'));
 
 // Citizen pages
-import CitizenDashboard from '../pages/CitizenDashboard';
-import ReportIssue from '../pages/ReportIssue';
-import NearbyIssues from '../pages/NearbyIssues';
-import MyComplaints from '../pages/MyComplaints';
-import SupportedIssues from '../pages/SupportedIssues';
-import PublicMap from '../pages/PublicMap';
-import Rewards from '../pages/Rewards';
+const CitizenDashboard = lazy(() => import('../pages/CitizenDashboard'));
+const ReportIssue = lazy(() => import('../pages/ReportIssue'));
+const NearbyIssues = lazy(() => import('../pages/NearbyIssues'));
+const MyComplaints = lazy(() => import('../pages/MyComplaints'));
+const SupportedIssues = lazy(() => import('../pages/SupportedIssues'));
+const PublicMap = lazy(() => import('../pages/PublicMap'));
+const Rewards = lazy(() => import('../pages/Rewards'));
+const ActivityHistory = lazy(() => import('../pages/ActivityHistory'));
 
 // Officer pages
-import OfficerDashboard from '../pages/OfficerDashboard';
-import AssignedIssues from '../pages/AssignedIssues';
-import OfficerMap from '../pages/OfficerMap';
-import OfficerReports from '../pages/OfficerReports';
-import OfficerAnalytics from '../pages/OfficerAnalytics';
+const OfficerDashboard = lazy(() => import('../pages/OfficerDashboard'));
+const AssignedIssues = lazy(() => import('../pages/AssignedIssues'));
+const OfficerMap = lazy(() => import('../pages/OfficerMap'));
+const OfficerReports = lazy(() => import('../pages/OfficerReports'));
+const OfficerAnalytics = lazy(() => import('../pages/OfficerAnalytics'));
 
 // Admin pages
-import AdminDashboard from '../pages/AdminDashboard';
-import AdminDepartments from '../pages/AdminDepartments';
-import AdminOfficers from '../pages/AdminOfficers';
-import AdminComplaints from '../pages/AdminComplaints';
-import AdminEscalations from '../pages/AdminEscalations';
-import AdminAnalytics from '../pages/AdminAnalytics';
-import AdminReports from '../pages/AdminReports';
-import AdminRewards from '../pages/AdminRewards';
-import AdminAuditLogs from '../pages/AdminAuditLogs';
-import AdminSettings from '../pages/AdminSettings';
+const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
+const AdminDepartments = lazy(() => import('../pages/AdminDepartments'));
+const AdminOfficers = lazy(() => import('../pages/AdminOfficers'));
+const AdminComplaints = lazy(() => import('../pages/AdminComplaints'));
+const AdminEscalations = lazy(() => import('../pages/AdminEscalations'));
+const AdminAnalytics = lazy(() => import('../pages/AdminAnalytics'));
+const AdminReports = lazy(() => import('../pages/AdminReports'));
+const AdminRewards = lazy(() => import('../pages/AdminRewards'));
+const AdminAuditLogs = lazy(() => import('../pages/AdminAuditLogs'));
+const AdminSettings = lazy(() => import('../pages/AdminSettings'));
+const AdminMap = lazy(() => import('../pages/AdminMap'));
 
 const AppRoutes = () => {
   return (
@@ -54,6 +56,7 @@ const AppRoutes = () => {
         <Route path="/citizen/supported" element={<SupportedIssues />} />
         <Route path="/citizen/map" element={<PublicMap />} />
         <Route path="/citizen/rewards" element={<Rewards />} />
+        <Route path="/citizen/activity" element={<ActivityHistory />} />
         <Route path="/citizen/notifications" element={<Notifications />} />
         <Route path="/citizen/profile" element={<Profile />} />
       </Route>
@@ -75,6 +78,7 @@ const AppRoutes = () => {
         <Route path="/admin/departments" element={<AdminDepartments />} />
         <Route path="/admin/officers" element={<AdminOfficers />} />
         <Route path="/admin/complaints" element={<AdminComplaints />} />
+        <Route path="/admin/map" element={<AdminMap />} />
         <Route path="/admin/escalations" element={<AdminEscalations />} />
         <Route path="/admin/analytics" element={<AdminAnalytics />} />
         <Route path="/admin/reports" element={<AdminReports />} />

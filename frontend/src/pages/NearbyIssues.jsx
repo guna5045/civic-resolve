@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
+import '../utils/mapSetup';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
-import { MapPin, Heart, AlertCircle } from 'lucide-react';
+import { MapPin, AlertCircle } from 'lucide-react';
 import ComplaintCard from '../components/common/ComplaintCard';
 import Button from '../components/common/Button';
 import { LanguageContext } from '../context/LanguageContext';
@@ -42,7 +43,7 @@ const NearbyIssues = () => {
   const [position, setPosition] = useState([40.7128, -74.006]); // Default center (NYC coords)
   const [complaints, setComplaints] = useState([]);
   const [supportedMap, setSupportedMap] = useState({});
-  const [radius, setRadius] = useState(5);
+  const [radius, setRadius] = useState(0.5); // Default center search radius: 500 meters
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -162,13 +163,13 @@ const NearbyIssues = () => {
             <label className="text-xs text-slate-400 font-semibold uppercase">{t('nearby.searchRadius')}</label>
             <select
               value={radius}
-              onChange={(e) => setRadius(parseInt(e.target.value))}
+              onChange={(e) => setRadius(parseFloat(e.target.value))}
               className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 outline-none focus:border-brand-500"
             >
-              <option value={2}>2 {t('nearby.km')}</option>
-              <option value={5}>5 {t('nearby.km')}</option>
-              <option value={10}>10 {t('nearby.km')}</option>
-              <option value={25}>25 {t('nearby.km')}</option>
+              <option value={0.1}>100 meters</option>
+              <option value={0.2}>200 meters</option>
+              <option value={0.5}>500 meters</option>
+              <option value={1.0}>1 kilometer</option>
             </select>
           </div>
         </div>

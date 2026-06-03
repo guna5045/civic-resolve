@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Bell, LogOut, Menu, User, Settings, Check, Globe, Accessibility, Sun, Moon } from 'lucide-react';
+import { Bell, LogOut, Menu, User, Settings, Check, Globe, Accessibility, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import { LanguageContext } from '../context/LanguageContext';
@@ -41,8 +41,8 @@ const Navbar = ({ toggleSidebar }) => {
 
     if (user?._id) {
       fetchNotifications();
-      // Poll every 60 seconds
-      const timer = setInterval(fetchNotifications, 60000);
+      // Poll every 120 seconds
+      const timer = setInterval(fetchNotifications, 120000);
 
       // Listen for visibility changes to refresh notifications immediately when tab becomes active
       const handleVisibilityChange = () => {
@@ -141,7 +141,7 @@ const Navbar = ({ toggleSidebar }) => {
 
   return (
     <header className="flex h-20 items-center justify-between border-b border-slate-800 bg-slate-900/60 px-6 backdrop-blur-md sticky top-0 z-30">
-      {/* Mobile Toggle & Search */}
+      {/* Mobile Toggle */}
       <div className="flex flex-1 items-center gap-4">
         <button
           onClick={toggleSidebar}
@@ -149,18 +149,6 @@ const Navbar = ({ toggleSidebar }) => {
         >
           <Menu className="h-6 w-6" />
         </button>
-
-        {/* Global Search */}
-        <div className="relative max-w-md w-full hidden md:block">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-slate-500" />
-          </span>
-          <input
-            type="text"
-            placeholder={t('nav.searchPlaceholder')}
-            className="w-full rounded-lg border border-slate-800 bg-slate-950/60 py-2 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-          />
-        </div>
       </div>
 
       {/* Header Actions */}

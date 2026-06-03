@@ -102,14 +102,51 @@ const AdminSettings = () => {
               onChange={(e) => setSettings({ ...settings, supportRadiusMeters: parseInt(e.target.value) || 0 })}
               required
             />
+          </div>
 
-            <Input
-              label="SLA Escalation Trigger (Days Pending)"
-              type="number"
-              value={settings.escalationRulesDays}
-              onChange={(e) => setSettings({ ...settings, escalationRulesDays: parseInt(e.target.value) || 0 })}
-              required
-            />
+          {/* AI Settings Section */}
+          <div className="glass-panel rounded-2xl border border-slate-800 p-6 space-y-4">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block border-b border-slate-805 pb-2">
+              AI Management Control Center
+            </span>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <label className="text-xs font-bold text-slate-250 block uppercase tracking-wider">Enable Gemini AI Features</label>
+                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                  When enabled, Google Gemini is used to summarize issues, suggest categories, and assess priority. When disabled, the local Fallback Engine runs without API requests.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, aiEnabled: !settings.aiEnabled })}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  settings.aiEnabled ? 'bg-brand-600' : 'bg-slate-800'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    settings.aiEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/40 text-xs flex justify-between items-center">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-450 tracking-wider">AI Operational Mode</span>
+                <p className="text-slate-200 font-bold mt-0.5">
+                  {settings.aiEnabled ? 'AI Active' : 'Fallback Engine Active'}
+                </p>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                settings.aiEnabled 
+                  ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' 
+                  : 'text-amber-450 bg-amber-500/10 border border-amber-500/20'
+              }`}>
+                {settings.aiEnabled ? 'Google Gemini' : 'Local Rule Engine'}
+              </span>
+            </div>
           </div>
 
           {/* Gamification Points Section */}

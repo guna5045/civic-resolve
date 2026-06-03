@@ -53,6 +53,10 @@ const complaintSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    aiReason: {
+      type: String,
+      default: '',
+    },
     category: {
       type: String,
       required: [true, 'Category is required'],
@@ -91,14 +95,104 @@ const complaintSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    assignmentTimestamp: {
+      type: Date,
+      default: null,
+    },
+    assignedByAdmin: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     supportCount: {
       type: Number,
       default: 0,
     },
     status: {
       type: String,
-      enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Closed', 'Escalated', 'Rejected'],
+      enum: ['Submitted', 'Under Review', 'Assigned', 'Inspection', 'In Progress', 'Resolved', 'Closed', 'Escalated', 'Rejected', 'Clarification Required', 'Verified', 'Verified By Officer', 'Work Started', 'Rejected By Officer', 'Reassigned', 'Information Clarified', 'Cancelled'],
       default: 'Submitted',
+    },
+    verifiedByOfficer: {
+      type: Boolean,
+      default: false,
+    },
+    verificationTimestamp: {
+      type: Date,
+      default: null,
+    },
+    verificationStatus: {
+      type: String,
+      default: '',
+    },
+    workStartTimestamp: {
+      type: Date,
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: '',
+    },
+    rejectionImages: [
+      {
+        type: String,
+      },
+    ],
+    correctionsRequired: {
+      type: String,
+      default: '',
+    },
+    reasonForReturn: {
+      type: String,
+      default: '',
+    },
+    inspectionNotes: {
+      type: String,
+      default: '',
+    },
+    inspectionObservations: {
+      type: String,
+      default: '',
+    },
+    inspectionFindings: {
+      type: String,
+      default: '',
+    },
+    inspectionTimestamp: {
+      type: Date,
+      default: null,
+    },
+    inspectionImages: [
+      {
+        type: String,
+      },
+    ],
+    progressNotes: {
+      type: String,
+      default: '',
+    },
+
+    progressFieldUpdates: {
+      type: String,
+      default: '',
+    },
+    progressTimestamp: {
+      type: Date,
+      default: null,
+    },
+    progressImages: [
+      {
+        type: String,
+      },
+    ],
+    completionTimestamp: {
+      type: Date,
+      default: null,
+    },
+    resolutionSummary: {
+      type: String,
+      default: '',
     },
     resolutionImages: [
       {
@@ -115,6 +209,10 @@ const complaintSchema = new mongoose.Schema(
       default: '',
     },
     adminRemarks: {
+      type: String,
+      default: '',
+    },
+    clarificationResponse: {
       type: String,
       default: '',
     },

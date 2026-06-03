@@ -33,10 +33,20 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (identifier, password, role) => {
+  const getErrorMessage = (err, defaultMsg) => {
+    if (err.response?.data?.message) {
+      return err.response.data.message;
+    }
+    if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+      return err.response.data.errors.map(e => e.msg).join(', ');
+    }
+    return err.message || defaultMsg;
+  };
+
+  const login = async (identifier, password, role, departmentId) => {
     setError(null);
     try {
-      const res = await api.post('/auth/login', { identifier, password, role });
+      const res = await api.post('/auth/login', { identifier, password, role, departmentId });
       if (res.data.success) {
         const { token, ...userData } = res.data.data;
         localStorage.setItem('token', token);
@@ -51,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         return profileRes.data.data;
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed. Please check credentials.';
+      const msg = getErrorMessage(err, 'Login failed. Please check credentials.');
       setError(msg);
       throw new Error(msg);
     }
@@ -61,24 +71,18 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const res = await api.post('/auth/register', { fullName, email, mobile, password });
-      if (res.data.success) {
-        const { token, ...userData } = res.data.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        return userData;
-      }
+      return res.data;
     } catch (err) {
-      const msg = err.response?.data?.message || 'Registration failed.';
+      const msg = getErrorMessage(err, 'Registration failed.');
       setError(msg);
       throw new Error(msg);
     }
   };
 
-  const demoLogin = async (role) => {
+  const verifyOtp = async (email, otp) => {
     setError(null);
     try {
-      const res = await api.post('/auth/demo', { role });
+      const res = await api.post('/auth/verify-otp', { email, otp });
       if (res.data.success) {
         const { token, ...userData } = res.data.data;
         localStorage.setItem('token', token);
@@ -93,7 +97,67 @@ export const AuthProvider = ({ children }) => {
         return profileRes.data.data;
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Demo login failed.';
+      const msg = getErrorMessage(err, 'OTP verification failed.');
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  const resendOtp = async (email) => {
+    setError(null);
+    try {
+      const res = await api.post('/auth/resend-otp', { email });
+      return res.data;
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Failed to resend OTP.');
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  const loginWithGoogle = async (credential) => {
+    setError(null);
+    try {
+      const res = await api.post('/auth/google', { credential });
+      if (res.data.success) {
+        const { token, ...userData } = res.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        // Refresh full profile data
+        const profileRes = await api.get('/auth/profile');
+        if (profileRes.data.success) {
+          setUser(profileRes.data.data);
+          localStorage.setItem('user', JSON.stringify(profileRes.data.data));
+        }
+        return profileRes.data.data;
+      }
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Google login failed.');
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  const demoLogin = async (role, departmentId) => {
+    setError(null);
+    try {
+      const res = await api.post('/auth/demo', { role, departmentId });
+      if (res.data.success) {
+        const { token, ...userData } = res.data.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        // Refresh full profile data
+        const profileRes = await api.get('/auth/profile');
+        if (profileRes.data.success) {
+          setUser(profileRes.data.data);
+          localStorage.setItem('user', JSON.stringify(profileRes.data.data));
+        }
+        return profileRes.data.data;
+      }
+    } catch (err) {
+      const msg = getErrorMessage(err, 'Demo login failed.');
       setError(msg);
       throw new Error(msg);
     }
@@ -118,7 +182,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, register, logout, refreshUser, demoLogin }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, verifyOtp, resendOtp, loginWithGoogle, logout, refreshUser, demoLogin }}>
       {children}
     </AuthContext.Provider>
   );
